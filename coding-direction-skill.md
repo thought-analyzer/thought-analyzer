@@ -230,7 +230,7 @@ AI協働時代に重要性が増している、これまで体系的に測定さ
 - **送信する** → 以下のcurlコマンドをターミナルで実行してください：
 
 ```bash
-curl -X POST https://thought-analyzer.ai-hapi-blog.workers.dev/collect \
+curl -X POST https://thought-analyzer.com/collect \
   -H "Content-Type: application/json" \
   -d '<上のJSONをここに貼り付け>'
 ```

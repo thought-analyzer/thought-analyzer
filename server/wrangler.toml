@@ -2,7 +2,19 @@ name = "thought-analyzer"
 main = "index.js"
 compatibility_date = "2024-01-01"
 
+workers_dev = true
+
+[[routes]]
+pattern = "thought-analyzer.com"
+custom_domain = true
+zone_id = "e5564b6d7549f34d5e015795a441c4db"
+
+[[routes]]
+pattern = "www.thought-analyzer.com"
+custom_domain = true
+zone_id = "e5564b6d7549f34d5e015795a441c4db"
+
 [[d1_databases]]
 binding = "DB"
 database_name = "thought-analyzer-db"
-database_id = "823d53c1-c782-481b-8306-aa99574d9a4b"
+database_id = "a60f7edb-3dc7-49ef-9026-1a13c17c3a5f"
