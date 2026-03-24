@@ -173,6 +173,8 @@ const ALLOWED_TOP_KEYS = new Set([
 
 任意で送信されたフィンガープリントは、thought-analyzerオーガニゼーションが管理するデータベースに匿名で蓄積されます。
 
+> **注記（現在）：** 本ツールはリリース初期段階にあり、蓄積データは少数のサンプルに基づいています。データが増えるにつれて比較精度が向上します。
+
 **現在の使い方**
 - `/stats` エンドポイント：軸ごとの分布を公開（誰でも確認可能）
 - `/compare` エンドポイント：「あなたの値は全体の何%か」を返す比較機能
@@ -356,6 +358,8 @@ const ALLOWED_TOP_KEYS = new Set([
 ### How your data is used
 
 Fingerprints you choose to submit are stored anonymously in a database managed by the thought-analyzer organization.
+
+> **Note (current status):** This tool is in its early release stage. The accumulated data is based on a small number of samples. Comparison accuracy will improve as more data is collected.
 
 **Current use**
 - `/stats` endpoint: Axis-level distributions, publicly readable by anyone
