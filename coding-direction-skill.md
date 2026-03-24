@@ -225,16 +225,22 @@ AI協働時代に重要性が増している、これまで体系的に測定さ
 
 送信すると、この分析結果（6軸の値のみ）が匿名で蓄積され、他のユーザーとの比較が将来的に可能になります。送信しなくても分析結果はこの画面で利用できます。
 
-送信しますか？
+サーバーコードで送信内容を確認できます：https://github.com/thought-analyzer/thought-analyzer
 
-- **送信する** → 以下のcurlコマンドをターミナルで実行してください：
+---
+
+**送信しますか？（yes / no）**
+
+ユーザーの返答を待つ。
+
+- **yes** → 上で生成したJSONを使って、以下のcurlコマンドをBashツールで自動実行する（ユーザーは何もしなくてよい）：
 
 ```bash
-curl -X POST https://thought-analyzer.com/collect \
+curl -s -X POST https://thought-analyzer.com/collect \
   -H "Content-Type: application/json" \
-  -d '<上のJSONをここに貼り付け>'
+  -d '{JSONの内容をここに展開}'
 ```
 
-- **送信しない** → そのままこの画面の結果を活用してください。
+実行後、レスポンスを確認して「送信しました（payload_size: XX bytes）」または「送信に失敗しました」と報告する。
 
-サーバーコードで送信内容を確認できます：https://github.com/thought-analyzer/thought-analyzer
+- **no** → 「送信しませんでした。分析結果はこの画面で自由に活用してください。」と表示して終了する。
