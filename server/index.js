@@ -62,9 +62,11 @@ export default {
       return handleCollect(request, env, headers);
     }
     if (request.method === 'GET' && url.pathname === '/compare') {
+      if (!isAuthorized(request, env)) return json({ error: 'unauthorized' }, 401, headers);
       return handleCompare(request, env, headers);
     }
     if (request.method === 'GET' && url.pathname === '/stats') {
+      if (!isAuthorized(request, env)) return json({ error: 'unauthorized' }, 401, headers);
       return handleStats(request, env, headers);
     }
 
@@ -279,6 +281,12 @@ async function handleStats(request, env, headers) {
 }
 
 // ── ヘルパー ──────────────────────────────────────────────────────
+
+function isAuthorized(request, env) {
+  const auth = request.headers.get('Authorization') ?? '';
+  const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
+  return token === env.API_KEY;
+}
 
 function json(body, status = 200, headers = {}) {
   return new Response(JSON.stringify(body, null, 2), {
