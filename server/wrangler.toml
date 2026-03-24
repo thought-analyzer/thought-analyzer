@@ -1,0 +1,8 @@
+name = "thought-analyzer"
+main = "index.js"
+compatibility_date = "2024-01-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "thought-analyzer-db"
+database_id = "（wrangler d1 create thought-analyzer-db で発行）"

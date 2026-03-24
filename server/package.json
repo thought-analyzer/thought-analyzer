@@ -1,0 +1,14 @@
+{
+  "name": "thought-analyzer-server",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:init": "wrangler d1 execute thought-analyzer-db --file=schema.sql",
+    "db:init:remote": "wrangler d1 execute thought-analyzer-db --remote --file=schema.sql"
+  },
+  "devDependencies": {
+    "wrangler": "^3.0.0"
+  }
+}
