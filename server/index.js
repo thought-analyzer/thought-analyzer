@@ -1,5 +1,5 @@
 /**
- * thought-analyzer — Cloudflare Workers backend
+ * thought-analyzer — Cloudflare Workers backend v2.0
  *
  * このファイルが受け取れるもの・保存できるものを
  * コードで証明するために全文公開しています。
@@ -18,22 +18,31 @@ const ALLOWED_TOP_KEYS = new Set([
 ]);
 
 const ALLOWED_FINGERPRINT_KEYS = new Set([
-  'judgment_order', 'number_usage', 'other_perspective',
-  'problem_style', 'concept_bridges',
-  'language_softness', 'abstraction_direction'
+  'abstraction_direction',
+  'problem_style',
+  'perspective_taking',
+  'face_strategy',        // { value, score }
+  'concept_distance',     // { bridges, distance, count }
+  'evaluation_framing',
+  'need_for_cognition',
+  'integrative_complexity',
+  'epistemic_curiosity',
 ]);
 
 const ALLOWED_VALUES = {
-  judgment_order:        new Set(['affirm_first', 'problem_first', 'neutral', 'mixed']),
-  number_usage:          new Set(['emotional_proof', 'comparison', 'precision', 'decoration', 'absent']),
-  other_perspective:     new Set(['spontaneous', 'reactive', 'absent']),
-  problem_style:         new Set(['pivot', 'fix', 'delegate', 'suspend']),
   abstraction_direction: new Set(['concrete_to_abstract', 'abstract_to_concrete', 'stays_concrete', 'stays_abstract']),
+  problem_style:         new Set(['pivot', 'fix', 'delegate', 'suspend']),
+  perspective_taking:    new Set(['spontaneous', 'reactive', 'absent']),
+  face_strategy_value:   new Set(['high_mitigation', 'moderate', 'low_mitigation']),
+  concept_distance_dist: new Set(['near', 'mid', 'far']),
+  evaluation_framing:    new Set(['gain_first', 'loss_first', 'neutral', 'mixed']),
+  need_for_cognition:    new Set(['high', 'moderate', 'low']),
+  epistemic_curiosity:   new Set(['interest_type', 'deprivation_type', 'mixed']),
 };
 
-const MAX_PAYLOAD_BYTES = 2000;
-const MAX_BRIDGE_TERM_LENGTH = 30;  // 「領域A × 領域B」の最大長
-const MAX_BRIDGE_COUNT = 10;
+const MAX_PAYLOAD_BYTES    = 2000;
+const MAX_BRIDGE_TERM_LENGTH = 30;
+const MAX_BRIDGE_COUNT       = 10;
 
 // ── メインハンドラ ────────────────────────────────────────────────
 
@@ -41,7 +50,6 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
 
-    // CORS
     const headers = {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
@@ -50,17 +58,12 @@ export default {
     };
     if (request.method === 'OPTIONS') return new Response(null, { headers });
 
-    // ── POST /collect ─────────────────────────────────────────────
     if (request.method === 'POST' && url.pathname === '/collect') {
       return handleCollect(request, env, headers);
     }
-
-    // ── GET /compare ──────────────────────────────────────────────
     if (request.method === 'GET' && url.pathname === '/compare') {
       return handleCompare(request, env, headers);
     }
-
-    // ── GET /stats ────────────────────────────────────────────────
     if (request.method === 'GET' && url.pathname === '/stats') {
       return handleStats(request, env, headers);
     }
@@ -84,19 +87,18 @@ async function handleCollect(request, env, headers) {
   try { body = JSON.parse(raw); }
   catch { return json({ error: 'invalid_json' }, 400, headers); }
 
-  // ③ 許可キー以外を除去（定義外フィールドは物理的に保存されない）
+  // ③ 許可キー以外を除去
   const data = {};
   for (const key of ALLOWED_TOP_KEYS) {
     if (body[key] !== undefined) data[key] = body[key];
   }
 
   // ④ 必須フィールドチェック
-  const required = ['analyzed_at', 'message_count', 'fingerprint'];
-  for (const k of required) {
+  for (const k of ['analyzed_at', 'message_count', 'fingerprint']) {
     if (!data[k]) return json({ error: `missing_field: ${k}` }, 400, headers);
   }
 
-  // ⑤ analyzed_at フォーマット検証（YYYY-MM のみ）
+  // ⑤ analyzed_at フォーマット検証
   if (!/^\d{4}-\d{2}$/.test(data.analyzed_at)) {
     return json({ error: 'invalid analyzed_at format. expected YYYY-MM' }, 400, headers);
   }
@@ -107,74 +109,92 @@ async function handleCollect(request, env, headers) {
   }
 
   // ⑦ fingerprint の許可キー以外を除去
+  const fp_raw = data.fingerprint;
   const fp = {};
   for (const key of ALLOWED_FINGERPRINT_KEYS) {
-    if (data.fingerprint[key] !== undefined) fp[key] = data.fingerprint[key];
+    if (fp_raw[key] !== undefined) fp[key] = fp_raw[key];
   }
 
-  // ⑧ 列挙値の検証（定義外の値は保存されない）
+  // ⑧ 列挙値の検証
   for (const [axis, allowed] of Object.entries(ALLOWED_VALUES)) {
-    if (fp[axis] && !allowed.has(fp[axis])) {
-      return json({ error: `invalid value for ${axis}: ${fp[axis]}` }, 400, headers);
+    if (axis === 'face_strategy_value') {
+      const v = fp.face_strategy?.value;
+      if (v && !allowed.has(v)) return json({ error: `invalid face_strategy.value: ${v}` }, 400, headers);
+    } else if (axis === 'concept_distance_dist') {
+      const v = fp.concept_distance?.distance;
+      if (v && !allowed.has(v)) return json({ error: `invalid concept_distance.distance: ${v}` }, 400, headers);
+    } else {
+      if (fp[axis] && !allowed.has(fp[axis])) {
+        return json({ error: `invalid value for ${axis}: ${fp[axis]}` }, 400, headers);
+      }
     }
   }
 
-  // ⑨ language_softness の範囲検証
-  if (fp.language_softness !== undefined) {
-    const v = fp.language_softness;
-    if (typeof v !== 'number' || v < 0 || v > 1) {
-      return json({ error: 'language_softness must be 0.0–1.0' }, 400, headers);
+  // ⑨ face_strategy.score の検証
+  const face_score = fp.face_strategy?.score;
+  if (face_score !== undefined) {
+    if (typeof face_score !== 'number' || face_score < 0 || face_score > 1) {
+      return json({ error: 'face_strategy.score must be 0.0-1.0' }, 400, headers);
     }
-    fp.language_softness = Math.round(v * 100) / 100;
   }
 
-  // ⑩ concept_bridges の検証（領域名のみ。長文・URLを含む場合は弾く）
-  if (fp.concept_bridges !== undefined) {
-    if (!Array.isArray(fp.concept_bridges)) {
-      return json({ error: 'concept_bridges must be array' }, 400, headers);
+  // ⑩ integrative_complexity の検証（1-7）
+  const ic = fp.integrative_complexity;
+  if (ic !== undefined) {
+    if (!Number.isInteger(ic) || ic < 1 || ic > 7) {
+      return json({ error: 'integrative_complexity must be integer 1-7' }, 400, headers);
     }
-    if (fp.concept_bridges.length > MAX_BRIDGE_COUNT) {
-      return json({ error: `concept_bridges max ${MAX_BRIDGE_COUNT} items` }, 400, headers);
-    }
-    for (const term of fp.concept_bridges) {
+  }
+
+  // ⑪ concept_distance.bridges の検証（領域名のみ。長文・URLを含む場合は弾く）
+  const bridges = fp.concept_distance?.bridges;
+  if (bridges !== undefined) {
+    if (!Array.isArray(bridges)) return json({ error: 'concept_distance.bridges must be array' }, 400, headers);
+    if (bridges.length > MAX_BRIDGE_COUNT) return json({ error: `bridges max ${MAX_BRIDGE_COUNT} items` }, 400, headers);
+    for (const term of bridges) {
       if (typeof term !== 'string' || term.length > MAX_BRIDGE_TERM_LENGTH) {
-        return json({ error: `concept_bridges term too long (max ${MAX_BRIDGE_TERM_LENGTH} chars)` }, 400, headers);
+        return json({ error: `bridge term too long (max ${MAX_BRIDGE_TERM_LENGTH} chars)` }, 400, headers);
       }
-      // URLっぽい文字列を弾く
       if (/https?:\/\/|www\.|\.com|\.jp/.test(term)) {
-        return json({ error: 'concept_bridges must not contain URLs' }, 400, headers);
+        return json({ error: 'bridges must not contain URLs' }, 400, headers);
       }
     }
   }
 
-  // ⑪ D1 に保存（許可されたフィールドのみ）
+  // ⑫ D1 に保存（許可されたフィールドのみ）
   const payload_size = raw.length;
   await env.DB.prepare(`
     INSERT INTO fingerprints (
       schema_version, analyzed_at, message_count,
-      judgment_order, number_usage, other_perspective,
-      problem_style, concept_bridges,
-      language_softness, abstraction_direction,
+      abstraction_direction, problem_style, perspective_taking,
+      face_strategy_value, face_strategy_score,
+      concept_distance_dist, concept_distance_count,
+      evaluation_framing, need_for_cognition,
+      integrative_complexity, epistemic_curiosity,
       payload_size
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
-    data.schema_version ?? '1.0',
+    data.schema_version ?? '2.0',
     data.analyzed_at,
     data.message_count,
-    fp.judgment_order ?? null,
-    fp.number_usage ?? null,
-    fp.other_perspective ?? null,
-    fp.problem_style ?? null,
-    JSON.stringify(fp.concept_bridges ?? []),
-    fp.language_softness ?? null,
-    fp.abstraction_direction ?? null,
+    fp.abstraction_direction     ?? null,
+    fp.problem_style             ?? null,
+    fp.perspective_taking        ?? null,
+    fp.face_strategy?.value      ?? null,
+    fp.face_strategy?.score      ?? null,
+    fp.concept_distance?.distance ?? null,
+    fp.concept_distance?.count    ?? null,
+    fp.evaluation_framing        ?? null,
+    fp.need_for_cognition        ?? null,
+    fp.integrative_complexity    ?? null,
+    fp.epistemic_curiosity       ?? null,
     payload_size
   ).run();
 
   // concept_bridges を全文検索テーブルにも登録
   const id_row = await env.DB.prepare('SELECT last_insert_rowid() as id').first();
-  if (id_row && fp.concept_bridges) {
-    for (const term of fp.concept_bridges) {
+  if (id_row && bridges?.length) {
+    for (const term of bridges) {
       await env.DB.prepare(
         'INSERT INTO concept_bridges_fts (fingerprint_id, bridge_term) VALUES (?, ?)'
       ).bind(id_row.id, term).run();
@@ -189,17 +209,19 @@ async function handleCollect(request, env, headers) {
 
 async function handleCompare(request, env, headers) {
   const url = new URL(request.url);
-  const axis = url.searchParams.get('axis');
+  const axis  = url.searchParams.get('axis');
   const value = url.searchParams.get('value');
 
-  if (!axis || !value) {
-    return json({ error: 'required: axis, value' }, 400, headers);
-  }
-  if (!ALLOWED_FINGERPRINT_KEYS.has(axis)) {
-    return json({ error: 'invalid axis' }, 400, headers);
-  }
+  const COMPARABLE_AXES = new Set([
+    'abstraction_direction', 'problem_style', 'perspective_taking',
+    'face_strategy_value', 'concept_distance_dist',
+    'evaluation_framing', 'need_for_cognition',
+    'integrative_complexity', 'epistemic_curiosity'
+  ]);
 
-  // 全体の分布を取得
+  if (!axis || !value) return json({ error: 'required: axis, value' }, 400, headers);
+  if (!COMPARABLE_AXES.has(axis)) return json({ error: 'invalid axis' }, 400, headers);
+
   const total = await env.DB.prepare('SELECT COUNT(*) as n FROM fingerprints').first();
   const match = await env.DB.prepare(
     `SELECT COUNT(*) as n FROM fingerprints WHERE ${axis} = ?`
@@ -225,25 +247,34 @@ async function handleCompare(request, env, headers) {
 async function handleStats(request, env, headers) {
   const total = await env.DB.prepare('SELECT COUNT(*) as n FROM fingerprints').first();
 
-  const axes = ['judgment_order', 'number_usage', 'other_perspective',
-                 'problem_style', 'abstraction_direction'];
+  const axes = [
+    'abstraction_direction', 'problem_style', 'perspective_taking',
+    'face_strategy_value', 'concept_distance_dist',
+    'evaluation_framing', 'need_for_cognition',
+    'integrative_complexity', 'epistemic_curiosity'
+  ];
   const distributions = {};
 
   for (const axis of axes) {
     const rows = await env.DB.prepare(
-      `SELECT ${axis} as val, COUNT(*) as n FROM fingerprints GROUP BY ${axis}`
+      `SELECT ${axis} as val, COUNT(*) as n FROM fingerprints WHERE ${axis} IS NOT NULL GROUP BY ${axis}`
     ).all();
     distributions[axis] = rows.results;
   }
 
-  const avg_softness = await env.DB.prepare(
-    'SELECT AVG(language_softness) as avg FROM fingerprints'
+  const avg_ic = await env.DB.prepare(
+    'SELECT AVG(integrative_complexity) as avg FROM fingerprints'
+  ).first();
+
+  const avg_face = await env.DB.prepare(
+    'SELECT AVG(face_strategy_score) as avg FROM fingerprints'
   ).first();
 
   return json({
     total_count: total?.n ?? 0,
     distributions,
-    language_softness_avg: avg_softness?.avg ?? null
+    integrative_complexity_avg: avg_ic?.avg ?? null,
+    face_strategy_score_avg:    avg_face?.avg ?? null
   }, 200, headers);
 }
 

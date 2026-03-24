@@ -47,6 +47,67 @@
 
 ---
 
+### 使い方
+
+#### Step 1：skillを読み込む
+
+以下のいずれかの方法でClaudeにskillを読み込ませます。
+
+**Claude.aiの場合（推奨）**
+1. Claude.aiでProjectを作成する
+2. Project instructionsに `skill.md`（または `coding-direction-skill.md`）の内容を貼り付ける
+3. 以降そのProjectで行う会話すべてにskillが適用される
+
+**Claude APIの場合**
+- `skill.md` の内容をsystem promptに含める
+
+**Claude Codeの場合**
+- `.claude/` にskillファイルを配置する（Claude Codeのskill機能を利用）
+
+#### Step 2：会話を積み重ねる
+
+skillを読み込んだ状態でClaudeと普段どおり会話します。
+分析はskillが発動した**以降の会話**を対象にします。
+
+**データ量と分析精度の目安：**
+
+| 会話の量 | 精度 |
+|---|---|
+| 10件未満 | 分析不可（もう少し続けてください） |
+| 10〜30件 | 低精度（参考値として出力） |
+| 30〜100件 | 標準精度 |
+| 100件以上 | 高精度 |
+
+#### Step 3：分析を実行する
+
+十分に会話が積まれたら、以下のように入力します。
+
+```
+思考パターンを分析して
+```
+```
+analyze my thinking
+```
+```
+コーディング指示力を分析して
+```
+```
+analyze my coding direction
+```
+
+Claudeが会話を解析し、フィンガープリントJSON＋解説を出力します。
+
+#### Step 4：結果を確認し、任意で送信する
+
+出力されたJSONを確認し、内容に納得したうえで任意でデータベースに送信できます。
+
+**送信されるもの：** 思考パターンの構造（9軸の値）・件数・分析日（年月のみ）
+**送信されないもの：** 会話の内容・固有名詞・コード・URL・個人を特定できる情報
+
+送信は任意です。確認してから判断してください。
+
+---
+
 ### 引用している理論・論文
 
 | 理論 | 著者・年 | 文献 |
@@ -108,12 +169,25 @@ const ALLOWED_TOP_KEYS = new Set([
 
 ---
 
-### 使い方
+### データの使われ方
 
-1. `skill.md` の内容をClaudeに読み込ませる
-2. 分析したい会話ログを貼り付ける
-3. フィンガープリントJSONと解説が出力される
-4. 任意でデータベースに送信する（内容を確認してから）
+任意で送信されたフィンガープリントは、thought-analyzerオーガニゼーションが管理するデータベースに匿名で蓄積されます。
+
+**現在の使い方**
+- `/stats` エンドポイント：軸ごとの分布を公開（誰でも確認可能）
+- `/compare` エンドポイント：「あなたの値は全体の何%か」を返す比較機能
+- データが増えるほど比較精度が向上し、独自性の判定が意味を持ち始める
+
+**今後のアップデートへの活用**
+蓄積されたデータは、分析軸の精度向上・新しい判定ロジックの開発・理論的根拠の検証に用いる予定です。データはパターンの統計としてのみ扱い、個人を特定する用途には使いません。
+
+**将来的に検討している展開**
+- より詳細な解析結果の提供（独自性スコア・強みの深掘り・時系列比較）
+- 有料プランでの個別フィードバック
+
+これらは現時点では未実装です。実装・提供の際は別途告知します。
+
+送信は常に任意です。送信しなくても分析結果（ローカル出力）は利用できます。
 
 ---
 
@@ -161,6 +235,60 @@ Measures not "the ability to write code" but **"the ability to effectively direc
 | Decision quality | Adaptive vs. routine technical judgment |
 | Technical vocabulary | Accuracy and context-appropriateness of terminology |
 | Iteration style | Structure and clarity of feedback cycles |
+
+---
+
+### How to use
+
+#### Step 1: Load the skill
+
+Load the skill into Claude using one of the following methods.
+
+**Claude.ai (recommended)**
+1. Create a Project in Claude.ai
+2. Paste the contents of `skill.md` (or `coding-direction-skill.md`) into the Project instructions
+3. The skill will apply to all conversations in that Project going forward
+
+**Claude API**
+- Include the contents of `skill.md` in the system prompt
+
+**Claude Code**
+- Place the skill file in `.claude/` and use Claude Code's skill feature
+
+#### Step 2: Have conversations
+
+Chat with Claude as you normally would. The skill analyzes the conversation that occurs **after** it is loaded.
+
+**Data volume and analysis accuracy:**
+
+| Conversation size | Accuracy |
+|---|---|
+| Fewer than 10 messages | Cannot analyze (continue the conversation) |
+| 10–30 messages | Low confidence (output with caveats) |
+| 30–100 messages | Standard accuracy |
+| 100+ messages | High accuracy |
+
+#### Step 3: Trigger analysis
+
+When you have enough conversation, enter one of the following:
+
+```
+analyze my thinking
+```
+```
+analyze my coding direction
+```
+
+Claude will analyze the conversation and output a fingerprint JSON with commentary.
+
+#### Step 4: Review and optionally submit
+
+Review the output JSON and, if you agree with its contents, optionally submit it to the database.
+
+**What is submitted:** Thinking pattern structure (9 axis values), message count, analysis date (year and month only)
+**What is never submitted:** Conversation content, proper nouns, code, URLs, or any personally identifiable information
+
+Submission is always optional. Review the JSON before deciding.
 
 ---
 
@@ -225,12 +353,25 @@ const ALLOWED_TOP_KEYS = new Set([
 
 ---
 
-### How to use
+### How your data is used
 
-1. Load `skill.md` into Claude
-2. Paste the conversation log you want to analyze
-3. Receive a fingerprint JSON with commentary
-4. Optionally submit to the database (review the JSON first)
+Fingerprints you choose to submit are stored anonymously in a database managed by the thought-analyzer organization.
+
+**Current use**
+- `/stats` endpoint: Axis-level distributions, publicly readable by anyone
+- `/compare` endpoint: Returns what percentage of users share your value on a given axis
+- The more data accumulates, the more meaningful the uniqueness comparisons become
+
+**Use for future improvements**
+Accumulated data will be used to improve analysis accuracy, develop new judgment logic, and validate theoretical grounding. Data is used only as statistical patterns — never to identify individuals.
+
+**Future possibilities under consideration**
+- More detailed analysis results (uniqueness scores, strength deep-dives, longitudinal comparisons)
+- Individual feedback via a premium tier
+
+These are not yet implemented. Any new offering will be announced separately.
+
+Submission is always optional. You can use the local analysis output without submitting anything.
 
 ---
 

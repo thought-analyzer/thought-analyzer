@@ -5,4 +5,4 @@ compatibility_date = "2024-01-01"
 [[d1_databases]]
 binding = "DB"
 database_name = "thought-analyzer-db"
-database_id = "（wrangler d1 create thought-analyzer-db で発行）"
+database_id = "823d53c1-c782-481b-8306-aa99574d9a4b"
