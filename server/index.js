@@ -1,5 +1,5 @@
 /**
- * thought-analyzer — Cloudflare Workers backend v2.0
+ * thought-analyzer — Cloudflare Workers backend v2.2
  *
  * このファイルが受け取れるもの・保存できるものを
  * コードで証明するために全文公開しています。
@@ -14,8 +14,10 @@
 // ── 定数定義（許可リスト）────────────────────────────────────────
 
 const ALLOWED_TOP_KEYS = new Set([
-  'schema_version', 'analyzed_at', 'message_count', 'fingerprint'
+  'schema_version', 'analyzed_at', 'message_count', 'fingerprint', 'user_token'
 ]);
+
+const MAX_USER_TOKEN_LENGTH = 128;
 
 const ALLOWED_FINGERPRINT_KEYS = new Set([
   'abstraction_direction',
@@ -68,6 +70,17 @@ export default {
     if (request.method === 'GET' && url.pathname === '/stats') {
       if (!isAuthorized(request, env)) return json({ error: 'unauthorized' }, 401, headers);
       return handleStats(request, env, headers);
+    }
+    if (request.method === 'GET' && url.pathname === '/export') {
+      if (!isAuthorized(request, env)) return json({ error: 'unauthorized' }, 401, headers);
+      return handleExport(request, env, headers);
+    }
+    if (request.method === 'GET' && url.pathname === '/record') {
+      return handleRecord(request, env, headers);
+    }
+    if (request.method === 'GET' && url.pathname === '/user') {
+      if (!isAuthorized(request, env)) return json({ error: 'unauthorized' }, 401, headers);
+      return handleUser(request, env, headers);
     }
 
     return new Response(JSON.stringify({ error: 'not found' }), { status: 404, headers });
@@ -163,10 +176,26 @@ async function handleCollect(request, env, headers) {
     }
   }
 
-  // ⑫ D1 に保存（許可されたフィールドのみ）
+  // ⑫ user_token の検証とハッシュ化（任意）
+  const raw_token = data.user_token;
+  let user_token_hash = null;
+  if (raw_token !== undefined) {
+    if (typeof raw_token !== 'string' || raw_token.length === 0 || raw_token.length > MAX_USER_TOKEN_LENGTH) {
+      return json({ error: `user_token must be 1-${MAX_USER_TOKEN_LENGTH} chars` }, 400, headers);
+    }
+    // SHA-256ハッシュ化（元の文字列は保存しない）
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw_token));
+    user_token_hash = Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  // ⑬ record_id を生成（サーバーサイドUUID）
+  const record_id = crypto.randomUUID();
   const payload_size = raw.length;
+
+  // ⑭ D1 に保存（許可されたフィールドのみ）
   await env.DB.prepare(`
     INSERT INTO fingerprints (
+      record_id, user_token_hash,
       schema_version, analyzed_at, message_count,
       abstraction_direction, problem_style, perspective_taking,
       face_strategy_value, face_strategy_score,
@@ -174,22 +203,24 @@ async function handleCollect(request, env, headers) {
       evaluation_framing, need_for_cognition,
       integrative_complexity, epistemic_curiosity,
       payload_size
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
+    record_id,
+    user_token_hash,
     data.schema_version ?? '2.0',
     data.analyzed_at,
     data.message_count,
-    fp.abstraction_direction     ?? null,
-    fp.problem_style             ?? null,
-    fp.perspective_taking        ?? null,
-    fp.face_strategy?.value      ?? null,
-    fp.face_strategy?.score      ?? null,
+    fp.abstraction_direction      ?? null,
+    fp.problem_style              ?? null,
+    fp.perspective_taking         ?? null,
+    fp.face_strategy?.value       ?? null,
+    fp.face_strategy?.score       ?? null,
     fp.concept_distance?.distance ?? null,
     fp.concept_distance?.count    ?? null,
-    fp.evaluation_framing        ?? null,
-    fp.need_for_cognition        ?? null,
-    fp.integrative_complexity    ?? null,
-    fp.epistemic_curiosity       ?? null,
+    fp.evaluation_framing         ?? null,
+    fp.need_for_cognition         ?? null,
+    fp.integrative_complexity     ?? null,
+    fp.epistemic_curiosity        ?? null,
     payload_size
   ).run();
 
@@ -203,11 +234,81 @@ async function handleCollect(request, env, headers) {
     }
   }
 
-  return json({ ok: true, payload_size }, 200, headers);
+  return json({ ok: true, payload_size, record_id }, 200, headers);
+}
+
+// ── /record ───────────────────────────────────────────────────────
+// record_id（UUID）でレコードを1件取得する（認証不要・UUIDが鍵）
+
+async function handleRecord(request, env, headers) {
+  const url = new URL(request.url);
+  const id = url.searchParams.get('id');
+
+  if (!id) return json({ error: 'required: id' }, 400, headers);
+
+  // UUID形式のバリデーション
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(id)) {
+    return json({ error: 'invalid id format' }, 400, headers);
+  }
+
+  const row = await env.DB.prepare(
+    'SELECT * FROM fingerprints WHERE record_id = ?'
+  ).bind(id).first();
+
+  if (!row) return json({ error: 'not found' }, 404, headers);
+
+  return json(row, 200, headers);
+}
+
+// ── /user ─────────────────────────────────────────────────────────
+// user_tokenのハッシュが一致するレコードを時系列で返す（認証必須）
+
+async function handleUser(request, env, headers) {
+  const url = new URL(request.url);
+  const token = url.searchParams.get('token');
+
+  if (!token) return json({ error: 'required: token' }, 400, headers);
+
+  // トークンをハッシュ化して照合
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token));
+  const hash = Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+
+  const rows = await env.DB.prepare(
+    'SELECT * FROM fingerprints WHERE user_token_hash = ? ORDER BY created_at ASC'
+  ).bind(hash).all();
+
+  if (!rows.results.length) return json({ error: 'not found' }, 404, headers);
+
+  return json({
+    count: rows.results.length,
+    token_hash: hash,
+    records: rows.results
+  }, 200, headers);
+}
+
+// ── /export ───────────────────────────────────────────────────────
+// 全レコードをJSONで返す（認証必須）
+
+async function handleExport(request, env, headers) {
+  const url = new URL(request.url);
+  const limit  = Math.min(parseInt(url.searchParams.get('limit')  ?? '1000'), 1000);
+  const offset = parseInt(url.searchParams.get('offset') ?? '0');
+
+  const rows = await env.DB.prepare(
+    'SELECT * FROM fingerprints ORDER BY created_at DESC LIMIT ? OFFSET ?'
+  ).bind(limit, offset).all();
+
+  const total = await env.DB.prepare('SELECT COUNT(*) as n FROM fingerprints').first();
+
+  return json({
+    total_count: total?.n ?? 0,
+    returned: rows.results.length,
+    offset,
+    records: rows.results
+  }, 200, headers);
 }
 
 // ── /compare ──────────────────────────────────────────────────────
-// 送信されたフィンガープリントが全体の分布の中でどこに位置するか返す
 
 async function handleCompare(request, env, headers) {
   const url = new URL(request.url);
@@ -244,7 +345,6 @@ async function handleCompare(request, env, headers) {
 }
 
 // ── /stats ────────────────────────────────────────────────────────
-// 全体の分布サマリーを返す（個人を特定できる情報は含まない）
 
 async function handleStats(request, env, headers) {
   const total = await env.DB.prepare('SELECT COUNT(*) as n FROM fingerprints').first();

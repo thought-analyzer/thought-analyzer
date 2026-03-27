@@ -1,9 +1,11 @@
--- thought-analyzer D1 schema v2.0
+-- thought-analyzer D1 schema v2.2
 -- 保存されるのはフィンガープリントのみ
 -- 生ログ・固有名詞・個人情報を受け取るカラムは存在しない
 
 CREATE TABLE IF NOT EXISTS fingerprints (
   id              INTEGER PRIMARY KEY AUTOINCREMENT,
+  record_id       TEXT    UNIQUE,                      -- サーバー発行UUID（ユーザーが保存すれば後から照合可能）
+  user_token_hash TEXT,                                -- ユーザー任意トークンのSHA-256ハッシュ（元の文字列は保存しない）
   created_at      TEXT    NOT NULL DEFAULT (datetime('now')),
 
   -- メタ情報（内容は含まない）
@@ -29,7 +31,8 @@ CREATE TABLE IF NOT EXISTS fingerprints (
 );
 
 -- 比較クエリ用インデックス
-CREATE INDEX IF NOT EXISTS idx_abstraction_dir   ON fingerprints(abstraction_direction);
+CREATE INDEX IF NOT EXISTS idx_record_id          ON fingerprints(record_id);
+CREATE INDEX IF NOT EXISTS idx_abstraction_dir    ON fingerprints(abstraction_direction);
 CREATE INDEX IF NOT EXISTS idx_problem_style      ON fingerprints(problem_style);
 CREATE INDEX IF NOT EXISTS idx_perspective        ON fingerprints(perspective_taking);
 CREATE INDEX IF NOT EXISTS idx_face_strategy      ON fingerprints(face_strategy_value);
@@ -42,3 +45,11 @@ CREATE INDEX IF NOT EXISTS idx_analyzed_at        ON fingerprints(analyzed_at);
 -- concept_bridges は配列なので全文検索で対応
 CREATE VIRTUAL TABLE IF NOT EXISTS concept_bridges_fts
   USING fts5(fingerprint_id, bridge_term);
+
+-- v2.1 migration（既存DBに対して手動で実行）
+-- ALTER TABLE fingerprints ADD COLUMN record_id TEXT;
+-- CREATE UNIQUE INDEX IF NOT EXISTS idx_record_id ON fingerprints(record_id);
+
+-- v2.2 migration（既存DBに対して手動で実行）
+-- ALTER TABLE fingerprints ADD COLUMN user_token_hash TEXT;
+-- CREATE INDEX IF NOT EXISTS idx_user_token_hash ON fingerprints(user_token_hash);
