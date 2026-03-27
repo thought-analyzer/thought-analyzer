@@ -55,11 +55,11 @@
 
 **Claude.aiの場合（推奨）**
 1. Claude.aiでProjectを作成する
-2. Project instructionsに `skill.md`（または `coding-direction-skill.md`）の内容を貼り付ける
+2. Project instructionsに `skills/skill.md`（または `skills/coding-direction-skill.md`）の内容を貼り付ける
 3. 以降そのProjectで行う会話すべてにskillが適用される
 
 **Claude APIの場合**
-- `skill.md` の内容をsystem promptに含める
+- `skills/skill.md` の内容をsystem promptに含める
 
 **Claude Codeの場合**
 - `.claude/` にskillファイルを配置する（Claude Codeのskill機能を利用）
@@ -152,9 +152,9 @@ const MAX_PAYLOAD_BYTES = 2000;
 // 生ログが含まれれば必ずここで弾かれる（生ログは数万バイト）
 
 const ALLOWED_TOP_KEYS = new Set([
-  'schema_version', 'analyzed_at', 'message_count', 'fingerprint'
+  'schema_version', 'analyzed_at', 'message_count', 'fingerprint', 'user_token'
 ]);
-// この4つ以外のフィールドは物理的に受け取れない
+// この5つ以外のフィールドは物理的に受け取れない
 ```
 
 - ペイロード上限2000バイト → 生ログが紛れ込んでも必ず弾かれる
@@ -248,11 +248,11 @@ Load the skill into Claude using one of the following methods.
 
 **Claude.ai (recommended)**
 1. Create a Project in Claude.ai
-2. Paste the contents of `skill.md` (or `coding-direction-skill.md`) into the Project instructions
+2. Paste the contents of `skills/skill.md` (or `skills/coding-direction-skill.md`) into the Project instructions
 3. The skill will apply to all conversations in that Project going forward
 
 **Claude API**
-- Include the contents of `skill.md` in the system prompt
+- Include the contents of `skills/skill.md` in the system prompt
 
 **Claude Code**
 - Place the skill file in `.claude/` and use Claude Code's skill feature
@@ -338,9 +338,9 @@ const MAX_PAYLOAD_BYTES = 2000;
 // Raw logs would be tens of thousands of bytes — always rejected here
 
 const ALLOWED_TOP_KEYS = new Set([
-  'schema_version', 'analyzed_at', 'message_count', 'fingerprint'
+  'schema_version', 'analyzed_at', 'message_count', 'fingerprint', 'user_token'
 ]);
-// Only these 4 fields can physically be received
+// Only these 5 fields can physically be received
 ```
 
 - 2000-byte payload limit — raw logs are always rejected
