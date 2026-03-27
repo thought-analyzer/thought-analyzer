@@ -1,6 +1,5 @@
 {
   "dependencies": {
-    "canvas": "^3.2.2",
-    "zenn-cli": "^0.4.7"
+    "canvas": "^3.2.2"
   }
 }
