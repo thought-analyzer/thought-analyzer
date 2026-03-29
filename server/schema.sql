@@ -53,3 +53,8 @@ CREATE VIRTUAL TABLE IF NOT EXISTS concept_bridges_fts
 -- v2.2 migration（既存DBに対して手動で実行）
 -- ALTER TABLE fingerprints ADD COLUMN user_token_hash TEXT;
 -- CREATE INDEX IF NOT EXISTS idx_user_token_hash ON fingerprints(user_token_hash);
+
+-- v2.3 migration（既存DBに対して手動で実行）
+-- ALTER TABLE fingerprints ADD COLUMN country TEXT;
+-- ALTER TABLE fingerprints ADD COLUMN language TEXT;
+-- ALTER TABLE fingerprints ADD COLUMN character_type TEXT;

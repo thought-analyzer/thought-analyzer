@@ -1,5 +1,5 @@
 /**
- * thought-analyzer — Cloudflare Workers backend v2.2
+ * thought-analyzer — Cloudflare Workers backend v2.3
  *
  * このファイルが受け取れるもの・保存できるものを
  * コードで証明するために全文公開しています。
@@ -192,7 +192,13 @@ async function handleCollect(request, env, headers) {
   const record_id = crypto.randomUUID();
   const payload_size = raw.length;
 
-  // ⑭ D1 に保存（許可されたフィールドのみ）
+  // ⑭ 国・言語・character_type を付与
+  const country = request.headers.get('CF-IPCountry') ?? null;
+  const acceptLang = request.headers.get('Accept-Language') ?? '';
+  const language = acceptLang.toLowerCase().startsWith('ja') ? 'ja' : (acceptLang ? 'other' : null);
+  const character_type = deriveCharacterType(fp);
+
+  // ⑮ D1 に保存（許可されたフィールドのみ）
   await env.DB.prepare(`
     INSERT INTO fingerprints (
       record_id, user_token_hash,
@@ -202,8 +208,8 @@ async function handleCollect(request, env, headers) {
       concept_distance_dist, concept_distance_count,
       evaluation_framing, need_for_cognition,
       integrative_complexity, epistemic_curiosity,
-      payload_size
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      payload_size, country, language, character_type
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     record_id,
     user_token_hash,
@@ -221,7 +227,10 @@ async function handleCollect(request, env, headers) {
     fp.need_for_cognition         ?? null,
     fp.integrative_complexity     ?? null,
     fp.epistemic_curiosity        ?? null,
-    payload_size
+    payload_size,
+    country,
+    language,
+    character_type
   ).run();
 
   // concept_bridges を全文検索テーブルにも登録
@@ -381,6 +390,22 @@ async function handleStats(request, env, headers) {
 }
 
 // ── ヘルパー ──────────────────────────────────────────────────────
+
+function deriveCharacterType(fp) {
+  const ps = fp.problem_style;
+  const ic = parseInt(fp.integrative_complexity) || 0;
+  const pt = fp.perspective_taking;
+  const ec = fp.epistemic_curiosity;
+  const cd = fp.concept_distance?.distance;
+  if (ps === 'pivot' && ic >= 5)                      return 'ARCHITECT';
+  if (ps === 'fix'   && ic >= 5)                      return 'ANALYST';
+  if (cd === 'far')                                   return 'BRIDGER';
+  if (pt === 'spontaneous' && ec === 'interest_type') return 'EXPLORER';
+  if (ps === 'pivot')                                 return 'PIONEER';
+  if (ps === 'fix')                                   return 'ENGINEER';
+  if (ps === 'delegate')                              return 'CONDUCTOR';
+  return 'NAVIGATOR';
+}
 
 function isAuthorized(request, env) {
   const auth = request.headers.get('Authorization') ?? '';

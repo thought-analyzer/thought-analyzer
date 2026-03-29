@@ -4,6 +4,28 @@
 
 ---
 
+## 2026-03-29
+
+**サーバー v2.3（デプロイ済み）**
+- `country` カラム追加：CF-IPCountry ヘッダーから取得
+- `language` カラム追加：Accept-Language が `ja` で始まる場合 `'ja'`、それ以外 `'other'`
+- `character_type` カラム追加：fingerprint から `deriveCharacterType()` で算出して保存
+- D1 マイグレーション実施（country/language/character_type カラム追加）
+- Cloudflare Workers デプロイ完了
+
+**HTMLビジュアライザー v6（generate-result-html.js）**
+- キャラクター画像（人間：char-subject-v2.png / AI：char-axiom9-v2.png）をデフォルト表示に変更
+- 背景を白〜薄青のグラデーション（`linear-gradient(160deg, #ffffff 0%, #dde6f5 100%)`）に変更
+- フォント：英語テキストは Inter、日本語テキストは Meiryo に分離
+- 全体フォントサイズを拡大（body 16px、本文 15px、軸ラベル 14px）
+- レーダーチャートのグリッド・角度線を暗色（`rgba(0,0,0,0.1)`）に変更
+- ペルソナラベル追加（19パターン、character_type から分岐）
+- 詳細ブロックのラベルを英語化：STRENGTHS / FRICTION / POTENTIAL / OVERVIEW / KEY AXIS / BEST CONTEXT / COLLABORATION / LOW CONFIDENCE
+- 概念接続キーワードを CONCEPT BRIDGES ブロックとして詳細セクションに追加
+- AIフィードバックセクション：「YOUR AI / Thinking Partner」に変更、「AI FEEDBACK FROM YOUR AI」ラベル、吹き出し下に注記テキスト追加
+
+---
+
 ## 2026-03-27
 
 **記事公開**
