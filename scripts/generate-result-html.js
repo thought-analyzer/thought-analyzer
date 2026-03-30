@@ -7,6 +7,13 @@
 const fs = require('fs');
 const path = require('path');
 
+// キャラ画像を base64 埋め込み（ローカルファイル CORS 回避）
+function loadImgBase64(relPath) {
+  const abs = path.join(__dirname, '..', relPath);
+  if (!fs.existsSync(abs)) return '';
+  return 'data:image/png;base64,' + fs.readFileSync(abs).toString('base64');
+}
+
 const jsonStr = process.argv[2];
 const outputPath = process.argv[3] || path.join('C:/Users/yoshi/Documents/skills/thought-analyzer', 'result-' + Date.now() + '.html');
 
@@ -64,6 +71,7 @@ function generateCharacter(fp) {
 }
 
 const subject = generateCharacter(fp);
+const charImgData = loadImgBase64('assets/images/char-subject-v2.png');
 
 // ── ペルソナラベル生成（19パターン） ────────────────
 function generatePersonaLabel(fp, charCode) {
@@ -235,6 +243,28 @@ function conceptBridgeBlock(cd) {
   return cblock('CONCEPT BRIDGES', inner, 'c-cyan');
 }
 
+// シェアカード用データ（Node.js側で計算してJSに埋め込む）
+const shareAxesData = JSON.stringify(axes.slice(0, 4).map((ax, i) => ({
+  label: ax.label,
+  pct: Math.round(normalize(ax.key, fp[ax.key]) * 100),
+  color: AXIS_COLORS[i % AXIS_COLORS.length]
+})));
+const shareRadarValues = JSON.stringify(radarValues);
+const sharePointColors = JSON.stringify(pointColors);
+
+const AXIS_SHORT_LABELS_MAP = {
+  abstraction_direction: '抽象-具体', problem_style: '問題解決',
+  perspective_taking: '他者視点', face_strategy: '配慮戦略',
+  concept_distance: '概念接続', evaluation_framing: '評価枠組',
+  need_for_cognition: '思考欲求', integrative_complexity: '複雑統合',
+  epistemic_curiosity: '知的好奇心',
+  specification_precision: '要件精度', error_recognition: 'エラー認識',
+  system_abstraction: 'システム抽象', decision_quality: '技術判断',
+  technical_vocabulary: '技術語彙', iteration_style: '改善サイクル',
+};
+const shareAxisShortLabels = JSON.stringify(axes.map(ax => AXIS_SHORT_LABELS_MAP[ax.key] || ax.label));
+const shareAxisEngLabels   = JSON.stringify(axes.map(ax => ax.label));
+
 const detailBlocks = [];
 if (commentary.strengths?.length)     detailBlocks.push(cblock('STRENGTHS', ul(commentary.strengths), 'c-green'));
 if (commentary.blind_spots?.length)   detailBlocks.push(cblock('FRICTION', ul(commentary.blind_spots), 'c-orange'));
@@ -248,6 +278,7 @@ if (commentary.collaboration_profile) detailBlocks.push(cblock('COLLABORATION', 
 if (commentary.low_confidence?.length) detailBlocks.push(cblock('LOW CONFIDENCE', ul(commentary.low_confidence), 'c-dim'));
 
 const traits = subjectTraits(fp);
+const shareTraits = JSON.stringify(traits);
 const title = isCoding ? '6軸 コーディング指示力分析結果' : '9軸 思考パターン分析結果';
 const analyzedAt = data.analyzed_at || '—';
 const msgCount = data.message_count ?? '—';
@@ -344,6 +375,12 @@ const html = '<!DOCTYPE html>\n<html lang="ja">\n<head>\n'
 + '.dev-notice-text { font-family: "Meiryo", "Yu Gothic", sans-serif; font-size: 14px; line-height: 1.75; color: #7a78a0; font-weight: 400; }\n'
 
 + 'footer { font-size: 11px; color: #a0a0c0; text-align: center; padding-top: 24px; border-top: 1px solid rgba(0,0,0,0.07); }\n'
+
++ '/* ── シェアボタン ── */\n'
++ '.share-btn { display: inline-flex; align-items: center; gap: 8px; font-family: "Inter", sans-serif; font-size: 13px; font-weight: 600; letter-spacing: 0.06em; color: #fff; background: linear-gradient(135deg, #6a5acd 0%, #4ecaff 100%); border: none; border-radius: 24px; padding: 10px 22px; cursor: pointer; box-shadow: 0 4px 16px rgba(106,90,205,0.3); transition: opacity 0.2s; margin-bottom: 40px; }\n'
++ '.share-btn:hover { opacity: 0.85; }\n'
++ '.share-btn svg { width: 15px; height: 15px; flex-shrink: 0; }\n'
+
 + '</style>\n</head>\n<body>\n<div class="container">\n'
 
 + '<div class="site-logo">Thought Analyzer</div>\n'
@@ -355,6 +392,10 @@ const html = '<!DOCTYPE html>\n<html lang="ja">\n<head>\n'
 + '  <span class="meta-sep">·</span>\n'
 + '  <span class="meta-date">' + msgCount + ' messages</span>\n'
 + '</div>\n'
++ '<button class="share-btn" onclick="captureCard()">'
++ '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>'
++ 'Share Result</button>\n'
+
 
 + '<!-- Section 1: ユーザープロファイル -->\n'
 + '<div class="profile-section">\n'
@@ -449,6 +490,231 @@ const html = '<!DOCTYPE html>\n<html lang="ja">\n<head>\n'
 + '    animation: { duration: 700, easing: "easeInOutQuart" }\n'
 + '  }\n'
 + '});\n'
++ '\n'
++ 'var SHARE_RADAR        = ' + shareRadarValues     + ';\n'
++ 'var SHARE_COLORS       = ' + sharePointColors     + ';\n'
++ 'var SHARE_AXES         = ' + shareAxesData        + ';\n'
++ 'var SHARE_AXIS_LABELS  = ' + shareAxisShortLabels + ';\n'
++ 'var SHARE_AXIS_ENG     = ' + shareAxisEngLabels   + ';\n'
++ 'var SHARE_TRAITS       = ' + shareTraits          + ';\n'
++ '\n'
++ 'function drawRadarOnCanvas(ctx, cx, cy, radius, values, ptColors, axisLabels, engLabels) {\n'
++ '  var n = values.length, step = (Math.PI*2)/n, start = -Math.PI/2;\n'
++ '  // グリッド（5段階）\n'
++ '  for (var lv = 1; lv <= 5; lv++) {\n'
++ '    var r = radius * lv / 5;\n'
++ '    ctx.beginPath();\n'
++ '    for (var i = 0; i < n; i++) {\n'
++ '      var a = start + i*step, x = cx + r*Math.cos(a), y = cy + r*Math.sin(a);\n'
++ '      i===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);\n'
++ '    }\n'
++ '    ctx.closePath();\n'
++ '    ctx.strokeStyle = lv===5 ? "rgba(0,0,0,0.13)" : "rgba(0,0,0,0.05)";\n'
++ '    ctx.lineWidth = 1; ctx.stroke();\n'
++ '  }\n'
++ '  // 軸線\n'
++ '  for (var i = 0; i < n; i++) {\n'
++ '    var a = start + i*step;\n'
++ '    ctx.beginPath(); ctx.moveTo(cx, cy);\n'
++ '    ctx.lineTo(cx + radius*Math.cos(a), cy + radius*Math.sin(a));\n'
++ '    ctx.strokeStyle = "rgba(0,0,0,0.09)"; ctx.lineWidth = 1; ctx.stroke();\n'
++ '  }\n'
++ '  // データ塗り\n'
++ '  ctx.beginPath();\n'
++ '  for (var i = 0; i < n; i++) {\n'
++ '    var a = start+i*step, r = radius*Math.max(0,Math.min(1,values[i]));\n'
++ '    var x = cx+r*Math.cos(a), y = cy+r*Math.sin(a);\n'
++ '    i===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);\n'
++ '  }\n'
++ '  ctx.closePath();\n'
++ '  ctx.fillStyle = "rgba(78,202,255,0.09)"; ctx.fill();\n'
++ '  ctx.strokeStyle = "rgba(78,202,255,0.5)"; ctx.lineWidth = 2; ctx.stroke();\n'
++ '  // データ点\n'
++ '  for (var i = 0; i < n; i++) {\n'
++ '    var a = start+i*step, r = radius*Math.max(0,Math.min(1,values[i]));\n'
++ '    ctx.beginPath(); ctx.arc(cx+r*Math.cos(a), cy+r*Math.sin(a), 6, 0, Math.PI*2);\n'
++ '    ctx.fillStyle = ptColors[i]; ctx.fill();\n'
++ '  }\n'
++ '  // 軸キャプション（日本語大 + 英語小・縦に固定行間）\n'
++ '  var labelR = radius + 56;\n'
++ '  var jaSize = 19, engSize = 12, lineGap = 18;\n'
++ '  for (var i = 0; i < n; i++) {\n'
++ '    var a = start + i*step;\n'
++ '    var lx = cx + labelR*Math.cos(a), ly = cy + labelR*Math.sin(a);\n'
++ '    var cosA = Math.cos(a), sinA = Math.sin(a);\n'
++ '    var tAlign = cosA > 0.28 ? "left" : (cosA < -0.28 ? "right" : "center");\n'
++ '    var eng = engLabels && engLabels[i] ? engLabels[i] : "";\n'
++ '    var jy, ey;\n'
++ '    if (sinA > 0.28) {\n'
++ '      // 下側: 日本語 → 英語（下向き）\n'
++ '      jy = ly; ey = ly + jaSize + lineGap;\n'
++ '      ctx.textBaseline = "top";\n'
++ '    } else if (sinA < -0.28) {\n'
++ '      // 上側: 英語 → 日本語（上向き）\n'
++ '      jy = ly; ey = ly - jaSize - lineGap;\n'
++ '      ctx.textBaseline = "bottom";\n'
++ '    } else {\n'
++ '      // 横: 日本語 middle、英語 middle+lineGap\n'
++ '      jy = ly - lineGap/2; ey = ly + jaSize/2 + lineGap/2;\n'
++ '      ctx.textBaseline = "top";\n'
++ '    }\n'
++ '    // 日本語ラベル\n'
++ '    ctx.font = "700 " + jaSize + "px Meiryo, sans-serif";\n'
++ '    ctx.fillStyle = ptColors[i];\n'
++ '    ctx.textAlign = tAlign;\n'
++ '    ctx.fillText(axisLabels[i] || String(i+1), lx, jy);\n'
++ '    // 英語ラベル\n'
++ '    if (eng) {\n'
++ '      ctx.font = "400 " + engSize + "px Inter, sans-serif";\n'
++ '      ctx.globalAlpha = 0.5;\n'
++ '      ctx.textBaseline = sinA < -0.28 ? "bottom" : "top";\n'
++ '      ctx.fillText(eng, lx, ey);\n'
++ '      ctx.globalAlpha = 1.0;\n'
++ '    }\n'
++ '  }\n'
++ '  ctx.textBaseline = "alphabetic"; ctx.textAlign = "left";\n'
++ '}\n'
++ '\n'
++ 'function captureCard() {\n'
++ '  var btn = document.querySelector(".share-btn");\n'
++ '  var orig = btn.innerHTML;\n'
++ '  btn.textContent = "Generating..."; btn.disabled = true;\n'
++ '\n'
++ '  var W = 1200, H = 630;\n'
++ '  var canvas = document.createElement("canvas");\n'
++ '  canvas.width = W; canvas.height = H;\n'
++ '  var ctx = canvas.getContext("2d");\n'
++ '\n'
++ '  var subjectColor = ' + JSON.stringify(subject.color) + ';\n'
++ '  var subjectCode  = ' + JSON.stringify(subject.code)  + ';\n'
++ '  var subjectJa    = ' + JSON.stringify(subject.ja)    + ';\n'
++ '  var persona      = ' + JSON.stringify(personaLabel)  + ';\n'
++ '  var imgSrc       = ' + JSON.stringify(charImgData)   + ';\n'
++ '  var now = new Date();\n'
++ '  var dateStr = now.getFullYear()+"年"+(now.getMonth()+1)+"月"+now.getDate()+"日";\n'
++ '\n'
++ '  function draw(charImg) {\n'
++ '    // ── 背景（ページと同じ）\n'
++ '    var bg = ctx.createLinearGradient(0, 0, W, H);\n'
++ '    bg.addColorStop(0, "#ffffff"); bg.addColorStop(1, "#dde6f5");\n'
++ '    ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);\n'
++ '\n'
++ '    // ── 左ゾーン(幅272): キャラ画像（上部）\n'
++ '    var LEFT = 272;\n'
++ '    if (charImg) {\n'
++ '      var ih = 330, iw = charImg.naturalWidth*(ih/charImg.naturalHeight);\n'
++ '      ctx.drawImage(charImg, LEFT/2 - iw/2, 16, iw, ih);\n'
++ '    }\n'
++ '\n'
++ '    // ── 豪華な枠（左下）: タイプ + ペルソナ + タグ\n'
++ '    var bx = 12, by = 354, bw = LEFT-24, bh = H-by-12;\n'
++ '    // 外枠グロー\n'
++ '    ctx.shadowColor = subjectColor; ctx.shadowBlur = 16;\n'
++ '    ctx.fillStyle = subjectColor + "1e";\n'
++ '    ctx.beginPath(); ctx.roundRect(bx, by, bw, bh, 14); ctx.fill();\n'
++ '    ctx.shadowBlur = 0; ctx.shadowColor = "transparent";\n'
++ '    // 内白面\n'
++ '    ctx.fillStyle = "rgba(255,255,255,0.9)";\n'
++ '    ctx.beginPath(); ctx.roundRect(bx+2, by+2, bw-4, bh-4, 12); ctx.fill();\n'
++ '    // 上部カラーバー\n'
++ '    ctx.fillStyle = subjectColor;\n'
++ '    ctx.beginPath(); ctx.roundRect(bx+2, by+2, bw-4, 5, [12,12,0,0]); ctx.fill();\n'
++ '    // タイプコード\n'
++ '    ctx.textAlign = "center";\n'
++ '    ctx.font = "900 26px Orbitron, sans-serif";\n'
++ '    ctx.fillStyle = subjectColor;\n'
++ '    ctx.fillText(subjectCode, bx+bw/2, by+44);\n'
++ '    // タイプ日本語\n'
++ '    ctx.font = "400 13px Meiryo, sans-serif";\n'
++ '    ctx.fillStyle = "#8a80a8";\n'
++ '    ctx.fillText(subjectJa, bx+bw/2, by+62);\n'
++ '    // 区切り\n'
++ '    ctx.strokeStyle = "rgba(0,0,0,0.08)"; ctx.lineWidth = 1;\n'
++ '    ctx.beginPath(); ctx.moveTo(bx+18, by+75); ctx.lineTo(bx+bw-18, by+75); ctx.stroke();\n'
++ '    // ペルソナラベル（17px・折り返し対応）\n'
++ '    ctx.font = "700 17px Meiryo, sans-serif";\n'
++ '    ctx.fillStyle = "#1e1a35";\n'
++ '    var maxPW = bw - 20;\n'
++ '    if (ctx.measureText(persona).width <= maxPW) {\n'
++ '      ctx.fillText(persona, bx+bw/2, by+100);\n'
++ '    } else {\n'
++ '      var mid = Math.ceil(persona.length/2);\n'
++ '      while (mid < persona.length && ctx.measureText(persona.slice(0,mid)).width > maxPW) mid--;\n'
++ '      ctx.fillText(persona.slice(0,mid), bx+bw/2, by+92);\n'
++ '      ctx.fillText(persona.slice(mid), bx+bw/2, by+114);\n'
++ '    }\n'
++ '    // タグ（方向転換・IC: 6/7 など）\n'
++ '    var tagY = by + 132;\n'
++ '    var tagPadX = 10, tagPadY = 5, tagH = 24, tagGapX = 6, tagGapY = 6;\n'
++ '    ctx.font = "500 12px Meiryo, Inter, sans-serif";\n'
++ '    var tagX = bx + 12;\n'
++ '    SHARE_TRAITS.forEach(function(tag, i) {\n'
++ '      var tw = ctx.measureText(tag).width + tagPadX*2;\n'
++ '      // 右端超えたら折り返し\n'
++ '      if (tagX + tw > bx + bw - 12) { tagX = bx + 12; tagY += tagH + tagGapY; }\n'
++ '      ctx.fillStyle = subjectColor + "1a";\n'
++ '      ctx.beginPath(); ctx.roundRect(tagX, tagY - tagH + tagPadY, tw, tagH, 20); ctx.fill();\n'
++ '      ctx.strokeStyle = subjectColor + "55"; ctx.lineWidth = 1;\n'
++ '      ctx.beginPath(); ctx.roundRect(tagX, tagY - tagH + tagPadY, tw, tagH, 20); ctx.stroke();\n'
++ '      ctx.fillStyle = subjectColor;\n'
++ '      ctx.textAlign = "left";\n'
++ '      ctx.textBaseline = "middle";\n'
++ '      ctx.fillText(tag, tagX + tagPadX, tagY - tagH/2 + tagPadY);\n'
++ '      ctx.textBaseline = "alphabetic";\n'
++ '      tagX += tw + tagGapX;\n'
++ '    });\n'
++ '    // 日付\n'
++ '    ctx.textAlign = "center";\n'
++ '    ctx.font = "400 11px Inter, sans-serif";\n'
++ '    ctx.fillStyle = "#b0aec8";\n'
++ '    ctx.fillText(dateStr, bx+bw/2, by+bh-12);\n'
++ '\n'
++ '    // ── 右ゾーン: 白カード（レーダーメイン）\n'
++ '    var cx0 = LEFT+10, cy0 = 16, cw = W-cx0-16, ch = H-32;\n'
++ '    ctx.shadowColor = "rgba(0,0,0,0.07)"; ctx.shadowBlur = 18; ctx.shadowOffsetY = 3;\n'
++ '    ctx.fillStyle = "rgba(255,255,255,0.78)";\n'
++ '    ctx.beginPath(); ctx.roundRect(cx0, cy0, cw, ch, 16); ctx.fill();\n'
++ '    ctx.shadowColor = "transparent"; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;\n'
++ '\n'
++ '    // Thought Analyzer ロゴ\n'
++ '    ctx.textAlign = "left";\n'
++ '    ctx.font = "900 26px Orbitron, sans-serif";\n'
++ '    ctx.fillStyle = "#6a5acd";\n'
++ '    ctx.fillText("Thought Analyzer", cx0+26, cy0+46);\n'
++ '\n'
++ '    // 右上: 分析情報\n'
++ '    ctx.font = "400 13px Inter, sans-serif";\n'
++ '    ctx.fillStyle = "#9a98b8"; ctx.textAlign = "right";\n'
++ '    ctx.fillText("9-axis thinking pattern", cx0+cw-22, cy0+32);\n'
++ '    ctx.fillText(dateStr+" 分析", cx0+cw-22, cy0+50);\n'
++ '\n'
++ '    // レーダーチャート（カード中央、ラベル込みで収まるサイズ）\n'
++ '    var rcx = cx0 + cw/2, rcy = cy0 + ch/2 + 10, rRadius = 140;\n'
++ '    drawRadarOnCanvas(ctx, rcx, rcy, rRadius, SHARE_RADAR, SHARE_COLORS, SHARE_AXIS_LABELS, SHARE_AXIS_ENG);\n'
++ '\n'
++ '    // thought-analyzer.com\n'
++ '    ctx.font = "400 11px Inter, sans-serif";\n'
++ '    ctx.fillStyle = "rgba(0,0,0,0.18)"; ctx.textAlign = "right";\n'
++ '    ctx.fillText("thought-analyzer.com", cx0+cw-18, cy0+ch-10);\n'
++ '\n'
++ '    canvas.toBlob(function(blob) {\n'
++ '      var url = URL.createObjectURL(blob);\n'
++ '      var a = document.createElement("a"); a.download = "thought-analyzer-result.png";\n'
++ '      a.href = url; a.click();\n'
++ '      setTimeout(function() { URL.revokeObjectURL(url); }, 1000);\n'
++ '      btn.innerHTML = orig; btn.disabled = false;\n'
++ '    }, "image/png");\n'
++ '  }\n'
++ '\n'
++ '  document.fonts.ready.then(function() {\n'
++ '    if (imgSrc) {\n'
++ '      var img = new Image();\n'
++ '      img.onload = function() { draw(img); };\n'
++ '      img.onerror = function() { draw(null); };\n'
++ '      img.src = imgSrc;\n'
++ '    } else { draw(null); }\n'
++ '  });\n'
++ '}\n'
 + '<\/script>\n</body>\n</html>';
 
 fs.writeFileSync(outputPath, html, 'utf-8');
