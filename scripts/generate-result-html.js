@@ -26,6 +26,8 @@ catch (e) { console.error('Invalid JSON:', e.message); process.exit(1); }
 const fp = data.fingerprint || data.coding_direction || {};
 const commentary = data.commentary || {};
 const isCoding = !!data.coding_direction;
+const lang = data.lang || 'ja';
+const t = (ja, en) => lang === 'en' ? en : ja;
 
 // ── 軸カラー ─────────────────────────────────────
 const AXIS_COLORS = ['#00e5ff','#a78bfa','#3dd68c','#f97316','#fb7185','#fbbf24','#60a5fa','#34d399','#e879f9'];
@@ -60,18 +62,29 @@ function generateCharacter(fp) {
   const pt  = fp.perspective_taking;
   const ec  = fp.epistemic_curiosity;
   const cd  = typeof fp.concept_distance === 'object' ? fp.concept_distance?.distance : fp.concept_distance;
-  if (ps === 'pivot' && ic >= 5)                              return { code:'ARCHITECT', ja:'設計者型',  color:'#f97316' };
-  if (ps === 'fix'   && ic >= 5)                              return { code:'ANALYST',   ja:'解析者型',  color:'#3dd68c' };
-  if (cd === 'far')                                           return { code:'BRIDGER',   ja:'橋渡し型',  color:'#e879f9' };
-  if (pt === 'spontaneous' && ec === 'interest_type')         return { code:'EXPLORER',  ja:'探索者型',  color:'#fbbf24' };
-  if (ps === 'pivot')                                         return { code:'PIONEER',   ja:'開拓者型',  color:'#a78bfa' };
-  if (ps === 'fix')                                           return { code:'ENGINEER',  ja:'工学者型',  color:'#60a5fa' };
-  if (ps === 'delegate')                                      return { code:'CONDUCTOR', ja:'指揮者型',  color:'#34d399' };
-  return { code:'NAVIGATOR', ja:'航行者型', color:'#00e5ff' };
+  if (ps === 'pivot' && ic >= 5)                              return { code:'ARCHITECT', ja:'設計者型',  en:'Architect Type',  color:'#f97316' };
+  if (ps === 'fix'   && ic >= 5)                              return { code:'ANALYST',   ja:'解析者型',  en:'Analyst Type',    color:'#3dd68c' };
+  if (cd === 'far')                                           return { code:'BRIDGER',   ja:'橋渡し型',  en:'Bridger Type',    color:'#e879f9' };
+  if (pt === 'spontaneous' && ec === 'interest_type')         return { code:'EXPLORER',  ja:'探索者型',  en:'Explorer Type',   color:'#fbbf24' };
+  if (ps === 'pivot')                                         return { code:'PIONEER',   ja:'開拓者型',  en:'Pioneer Type',    color:'#a78bfa' };
+  if (ps === 'fix')                                           return { code:'ENGINEER',  ja:'工学者型',  en:'Engineer Type',   color:'#60a5fa' };
+  if (ps === 'delegate')                                      return { code:'CONDUCTOR', ja:'指揮者型',  en:'Conductor Type',  color:'#34d399' };
+  return { code:'NAVIGATOR', ja:'航行者型', en:'Navigator Type', color:'#00e5ff' };
 }
 
 const subject = generateCharacter(fp);
-const charImgData = loadImgBase64('assets/images/char-subject-v2.png');
+const PERSONA_IMG_MAP = {
+  ARCHITECT: 'assets/images/persona-ARCHITECT.png',
+  ANALYST:   'assets/images/persona-ANALYST.png',
+  BRIDGER:   'assets/images/persona-BRIDGER.png',
+  EXPLORER:  'assets/images/persona-EXPLORER.png',
+  PIONEER:   'assets/images/persona-PIONEER.png',
+  ENGINEER:  'assets/images/persona-ENGINEER.png',
+  CONDUCTOR: 'assets/images/persona-CONDUCTOR.png',
+  NAVIGATOR: 'assets/images/persona-NAVIGATOR.png',
+};
+const charImgData = loadImgBase64(PERSONA_IMG_MAP[subject.code] || 'assets/images/char-subject-v2.png');
+const aiImgData   = loadImgBase64('assets/images/char-axiom9-v2.png');
 
 // ── ペルソナラベル生成（19パターン） ────────────────
 function generatePersonaLabel(fp, charCode) {
@@ -82,39 +95,39 @@ function generatePersonaLabel(fp, charCode) {
   const cd  = typeof fp.concept_distance === 'object' ? fp.concept_distance?.distance : fp.concept_distance;
   switch (charCode) {
     case 'ARCHITECT':
-      if (cd === 'far')                  return '異分野を繋ぐ思想設計者';
-      if (pt === 'spontaneous')          return '探索プロジェクトの構造家';
-      return '複雑系を再設計するアーキテクト';
+      if (cd === 'far')                  return t('異分野を繋ぐ思想設計者', 'Visionary architect bridging distant domains');
+      if (pt === 'spontaneous')          return t('探索プロジェクトの構造家', 'Structural designer of exploratory projects');
+      return t('複雑系を再設計するアーキテクト', 'Architect who redesigns complex systems');
     case 'ANALYST':
-      if (cd === 'far')                  return '深層まで追う構造解析者';
-      if (ec === 'deprivation_type')     return '精密に詰める知識解析者';
-      return '技術課題の根本解決者';
+      if (cd === 'far')                  return t('深層まで追う構造解析者', 'Deep structural analyst across distant fields');
+      if (ec === 'deprivation_type')     return t('精密に詰める知識解析者', 'Precise knowledge analyst driven by gaps');
+      return t('技術課題の根本解決者', 'Root-cause solver of technical challenges');
     case 'BRIDGER':
-      if (pt === 'spontaneous' && ec === 'interest_type') return '概念を橋渡しするビジョナリー';
-      if (pt === 'spontaneous')          return '異領域を繋ぐ架け橋型思考者';
-      return '遠い概念を接続する発想者';
+      if (pt === 'spontaneous' && ec === 'interest_type') return t('概念を橋渡しするビジョナリー', 'Visionary who bridges concepts across domains');
+      if (pt === 'spontaneous')          return t('異領域を繋ぐ架け橋型思考者', 'Cross-domain bridge thinker');
+      return t('遠い概念を接続する発想者', 'Connector of distant conceptual domains');
     case 'EXPLORER':
-      if (ps === 'pivot')                return '創造的課題の開拓探索者';
-      return '好奇心で世界を広げる探索者';
+      if (ps === 'pivot')                return t('創造的課題の開拓探索者', 'Creative pioneer exploring new challenges');
+      return t('好奇心で世界を広げる探索者', 'Curiosity-driven explorer expanding horizons');
     case 'PIONEER':
-      if (ec === 'interest_type')        return '発想転換を得意とする開拓者';
-      return '柔軟に再設計する問題解決者';
+      if (ec === 'interest_type')        return t('発想転換を得意とする開拓者', 'Pioneer skilled at reframing problems');
+      return t('柔軟に再設計する問題解決者', 'Flexible redesigner and problem solver');
     case 'ENGINEER':
-      if (ec === 'deprivation_type')     return '知識ギャップを詰める実装者';
-      return '原因を特定する実装型思考者';
+      if (ec === 'deprivation_type')     return t('知識ギャップを詰める実装者', 'Implementer driven to close knowledge gaps');
+      return t('原因を特定する実装型思考者', 'Root-cause identifier with an engineering mindset');
     case 'CONDUCTOR':
-      if (pt === 'spontaneous')          return 'チームを束ねる協働コーディネーター';
-      return '実行を委ねる全体指揮者';
+      if (pt === 'spontaneous')          return t('チームを束ねる協働コーディネーター', 'Collaborative coordinator who unifies teams');
+      return t('実行を委ねる全体指揮者', 'Strategic director who delegates execution');
     case 'NAVIGATOR':
     default:
-      if (ic >= 5)                       return '情報を熟成させる深慮型プランナー';
-      return '状況に応じて舵を切る航行型思考者';
+      if (ic >= 5)                       return t('情報を熟成させる深慮型プランナー', 'Deliberate planner who lets ideas mature');
+      return t('状況に応じて舵を切る航行型思考者', 'Adaptive navigator who steers by context');
   }
 }
 
 const personaLabel = generatePersonaLabel(fp, subject.code);
 
-// ── 値の日本語表示 ─────────────────────────────────
+// ── 値の表示ラベル ────────────────────────────────
 const jaValues = {
   abstraction_direction: { stays_concrete:'具体にとどまる', concrete_to_abstract:'具体 → 抽象', abstract_to_concrete:'抽象 → 具体', stays_abstract:'抽象にとどまる' },
   problem_style:         { fix:'根本解決', suspend:'保留', delegate:'委任', pivot:'方向転換' },
@@ -128,6 +141,20 @@ const jaValues = {
   technical_vocabulary:  { lay:'日常語', approximate:'近似的', precise:'精確', mixed:'混在' },
   iteration_style:       { batch_vague:'一括・曖昧', incremental_vague:'小刻み・曖昧', batch_clear:'一括・明確', incremental_clear:'小刻み・明確' },
 };
+const enValues = {
+  abstraction_direction: { stays_concrete:'stays concrete', concrete_to_abstract:'concrete → abstract', abstract_to_concrete:'abstract → concrete', stays_abstract:'stays abstract' },
+  problem_style:         { fix:'root fix', suspend:'suspend', delegate:'delegate', pivot:'pivot' },
+  perspective_taking:    { absent:'limited', reactive:'reactive', spontaneous:'spontaneous' },
+  evaluation_framing:    { loss_first:'loss first', neutral:'neutral', mixed:'mixed', gain_first:'gain first' },
+  need_for_cognition:    { low:'low', moderate:'moderate', high:'high' },
+  epistemic_curiosity:   { deprivation_type:'D-type', mixed:'mixed', interest_type:'I-type' },
+  error_recognition:     { result_only:'result only', behavioral:'behavioral', structural:'structural' },
+  system_abstraction:    { blackbox:'blackbox', interface:'interface', component:'component', architecture:'architecture' },
+  decision_quality:      { deferred:'deferred', routine:'routine', adaptive:'adaptive' },
+  technical_vocabulary:  { lay:'lay terms', approximate:'approximate', precise:'precise', mixed:'mixed' },
+  iteration_style:       { batch_vague:'batch · vague', incremental_vague:'incremental · vague', batch_clear:'batch · clear', incremental_clear:'incremental · clear' },
+};
+const displayValues = lang === 'en' ? enValues : jaValues;
 
 const axisDescriptions = {
   abstraction_direction: { stays_concrete:'終始、操作・事象・結果の話にとどまり抽象化には向かいにくい。', concrete_to_abstract:'具体的な事象・課題から出発し、概念や原則へと向かう思考の流れ。', abstract_to_concrete:'概念・アイデアから始まり、実装や具体的な行動へと降りていく。', stays_abstract:'終始、理念・方向性・フレームの話にとどまり具体には降りにくい。' },
@@ -140,21 +167,47 @@ const axisDescriptions = {
   integrative_complexity:{ '1':'一次元的。単一の視点・基準のみで判断する。', '2':'複数視点の萌芽はあるが統合には至らない。', '3':'複数の側面を認識するが接続・統合はしない。', '4':'複数の側面を詳細に認識している。統合は部分的。', '5':'複数の側面を認識し、その相互関係を考える（分化＋統合）。', '6':'複数の枠組みが関連付けられ、複雑な統合が行われる。', '7':'多次元的な枠組みを構築し、矛盾する視点を高次で統合する。' },
   epistemic_curiosity:   { interest_type:'新しい情報それ自体への喜び（I型）。話題が自然に広がる探索的スタイル。', deprivation_type:'知識のギャップを埋めたい不快感（D型）。解決しないと前に進めない収束型。', mixed:'両方の動機が混在。文脈によって探索的・収束的が切り替わる。' },
 };
+const axisDescriptions_en = {
+  abstraction_direction: { stays_concrete:'Stays in concrete territory throughout — operations, events, results — rarely moving toward abstraction.', concrete_to_abstract:'Thinking starts from concrete events or problems and rises toward concepts and principles.', abstract_to_concrete:'Starts from concepts or ideas, then descends into implementation and concrete action.', stays_abstract:'Stays at the level of vision, direction, and frameworks throughout — rarely landing on specifics.' },
+  problem_style:         { fix:'Identifies root cause and corrects it. An Adaptor-leaning style that resolves from the ground up.', pivot:'Looks for alternatives and different approaches first. An Innovator-leaning style that redesigns rather than patches.', delegate:'Defers resolution to others (AI, teammates). Prioritizes execution speed over personal judgment.', suspend:'Holds judgment until more information arrives. Tends to postpone decisions rather than commit early.' },
+  perspective_taking:    { spontaneous:'Other perspectives arise naturally and unprompted. High empathy and design-thinking orientation.', reactive:'Others\' perspectives emerge when prompted by context or relevant topics. Situation-dependent empathy.', absent:'Focus stays on self, system, or task. Others rarely appear. Task-concentrated orientation.' },
+  face_strategy:         { high_mitigation:'Frequent softening expressions ("maybe", "perhaps", "if you don\'t mind"). Score: 0.7–1.0.', moderate:'Mix of direct and mitigating language. Adapts by context. Score: 0.4–0.69.', low_mitigation:'Direct and assertive phrasing predominates. Score: 0.0–0.39.' },
+  concept_distance:      { near:'Adjacent domain connections (tech × business, design × implementation).', mid:'Moderately distant connections (tech × education, economics × behavior).', far:'Bridges across normally unrelated domains (tech × philosophy, economics × emotion × space).' },
+  evaluation_framing:    { gain_first:'"Looks good — though I\'d change this." Leads with affirmation, then adds corrections.', loss_first:'Leads with problems or concerns, then supplements with positives.', neutral:'Informational style. Presents facts and conditions without foregrounding value judgments.', mixed:'Switches between gain_first and loss_first depending on context.' },
+  need_for_cognition:    { high:'Spontaneously generates questions and develops complex analysis. Unprompted questions appear repeatedly.', moderate:'Deliberates when needed but rarely extends questions further on their own.', low:'Prefers clear, concise answers. Prioritizes execution speed over reflection.' },
+  integrative_complexity:{ '1':'One-dimensional. Judges from a single viewpoint or criterion.', '2':'Early signs of multiple perspectives but no integration.', '3':'Recognizes multiple dimensions but does not connect or integrate them.', '4':'Recognizes multiple dimensions in detail. Integration is partial.', '5':'Recognizes multiple dimensions and considers their interrelationships (differentiation + integration).', '6':'Multiple frameworks are linked; complex integration occurs.', '7':'Constructs multi-dimensional frameworks; integrates contradictory perspectives at a higher level.' },
+  epistemic_curiosity:   { interest_type:'Delight in new information itself (I-type). Exploration-driven; topics naturally expand.', deprivation_type:'Discomfort from knowledge gaps (D-type). Convergence-driven; can\'t move on until resolved.', mixed:'Both motivations present. Switches between exploratory and convergent modes by context.' },
+};
+const activeDescriptions = lang === 'en' ? axisDescriptions_en : axisDescriptions;
 
 function getDesc(key, val) {
   if (!val) return '';
-  if (key === 'face_strategy') { const v = typeof val === 'object' ? val.value : val; return axisDescriptions.face_strategy[v] || ''; }
-  if (key === 'concept_distance') { const d = typeof val === 'object' ? val.distance : val; return axisDescriptions.concept_distance[d] || ''; }
-  if (key === 'integrative_complexity') return axisDescriptions.integrative_complexity[String(val)] || '';
-  return axisDescriptions[key]?.[val] || '';
+  if (key === 'face_strategy') { const v = typeof val === 'object' ? val.value : val; return activeDescriptions.face_strategy?.[v] || ''; }
+  if (key === 'concept_distance') { const d = typeof val === 'object' ? val.distance : val; return activeDescriptions.concept_distance?.[d] || ''; }
+  if (key === 'integrative_complexity') return activeDescriptions.integrative_complexity?.[String(val)] || '';
+  return activeDescriptions[key]?.[val] || '';
 }
 
 function displayValueJa(key, val) {
   if (val === null || val === undefined) return '—';
-  if (key === 'face_strategy') { const v = typeof val==='object'?val.value:val; const s=typeof val==='object'?val.score:null; const m={high_mitigation:'高配慮',moderate:'中程度',low_mitigation:'低配慮'}; return s!==null?(m[v]||v)+'（'+s+'）':(m[v]||v); }
-  if (key === 'concept_distance') { const d=typeof val==='object'?val.distance:val; const c=typeof val==='object'?val.count:null; const m={near:'近距離',mid:'中距離',far:'遠距離'}; return c!==null?(m[d]||d)+'（n='+c+'）':(m[d]||d); }
+  if (key === 'face_strategy') {
+    const v = typeof val==='object'?val.value:val;
+    const s = typeof val==='object'?val.score:null;
+    const m = lang === 'en'
+      ? {high_mitigation:'high mitigation',moderate:'moderate',low_mitigation:'low mitigation'}
+      : {high_mitigation:'高配慮',moderate:'中程度',low_mitigation:'低配慮'};
+    return s!==null?(m[v]||v)+(lang==='en'?' ('+s+')':'（'+s+'）'):(m[v]||v);
+  }
+  if (key === 'concept_distance') {
+    const d=typeof val==='object'?val.distance:val;
+    const c=typeof val==='object'?val.count:null;
+    const m = lang === 'en'
+      ? {near:'near',mid:'mid',far:'far'}
+      : {near:'近距離',mid:'中距離',far:'遠距離'};
+    return c!==null?(m[d]||d)+(lang==='en'?' (n='+c+')':'（n='+c+'）'):(m[d]||d);
+  }
   if (key === 'integrative_complexity' || key === 'specification_precision') return String(val);
-  return jaValues[key]?.[val] || String(val);
+  return displayValues[key]?.[val] || String(val);
 }
 
 // ── 軸定義 ────────────────────────────────────────
@@ -186,14 +239,16 @@ const pointColors = axes.map((_, i) => AXIS_COLORS[i % AXIS_COLORS.length]);
 // ── 主要trait抽出 ─────────────────────────────────
 function subjectTraits(fp) {
   const tags = [];
-  const ps  = jaValues.problem_style?.[fp.problem_style];
+  const ps  = displayValues.problem_style?.[fp.problem_style];
   const ic  = fp.integrative_complexity;
   const cd  = typeof fp.concept_distance==='object' ? fp.concept_distance?.distance : fp.concept_distance;
-  const pt  = jaValues.perspective_taking?.[fp.perspective_taking];
+  const pt  = displayValues.perspective_taking?.[fp.perspective_taking];
   if (ps)  tags.push(ps);
   if (ic)  tags.push('IC: ' + ic + '/7');
-  if (cd)  tags.push({ near:'概念-近距離', mid:'概念-中距離', far:'概念-遠距離' }[cd] || cd);
-  if (pt)  tags.push('視点: ' + pt);
+  if (cd)  tags.push(lang === 'en'
+    ? { near:'concept-near', mid:'concept-mid', far:'concept-far' }[cd] || cd
+    : { near:'概念-近距離', mid:'概念-中距離', far:'概念-遠距離' }[cd] || cd);
+  if (pt)  tags.push((lang === 'en' ? 'perspective: ' : '視点: ') + pt);
   return tags.slice(0, 4);
 }
 
@@ -207,7 +262,7 @@ const axisRows = axes.map(({ key, ja, label }, i) => {
   return '<div class="axis-row">'
     + '<div class="axis-header">'
     + '<span class="axis-num" style="color:' + color + ';border-color:' + color + '66">' + (i+1) + '</span>'
-    + '<span class="axis-ja">' + ja + '</span>'
+    + '<span class="axis-ja">' + (lang === 'en' ? label : ja) + '</span>'
     + '<span class="axis-pct" style="color:' + color + '">' + pct + '%</span>'
     + '</div>'
     + '<div class="axis-val-text" style="color:' + color + '">' + jaVal + '</div>'
@@ -279,7 +334,9 @@ if (commentary.low_confidence?.length) detailBlocks.push(cblock('LOW CONFIDENCE'
 
 const traits = subjectTraits(fp);
 const shareTraits = JSON.stringify(traits);
-const title = isCoding ? '6軸 コーディング指示力分析結果' : '9軸 思考パターン分析結果';
+const title = isCoding
+  ? t('6軸 コーディング指示力分析結果', '6-axis Coding Direction Analysis')
+  : t('9軸 思考パターン分析結果', '9-axis Thinking Pattern Analysis');
 const analyzedAt = data.analyzed_at || '—';
 const msgCount = data.message_count ?? '—';
 
@@ -400,9 +457,9 @@ const html = '<!DOCTYPE html>\n<html lang="ja">\n<head>\n'
 + '<!-- Section 1: ユーザープロファイル -->\n'
 + '<div class="profile-section">\n'
 + '  <div class="char-col">\n'
-+ '    <img src="assets/images/char-subject-v2.png" alt="SUBJECT" class="char-img">\n'
++ '    <img src="' + (charImgData || 'assets/images/char-subject-v2.png') + '" alt="SUBJECT" class="char-img">\n'
 + '    <div class="char-type-code">' + subject.code + '</div>\n'
-+ '    <div class="char-type-ja">' + subject.ja + '</div>\n'
++ '    <div class="char-type-ja">' + (lang === 'en' ? subject.en : subject.ja) + '</div>\n'
 + '    <div class="persona-label">' + personaLabel + '</div>\n'
 + '    <div class="char-tags">\n'
 + traits.map(t => '      <span class="char-tag" style="color:' + subject.color + ';border-color:' + subject.color + '44">' + t + '</span>').join('\n') + '\n'
@@ -410,7 +467,7 @@ const html = '<!DOCTYPE html>\n<html lang="ja">\n<head>\n'
 + '  </div>\n'
 + '  <div class="charts-col">\n'
 + '    <div class="chart-card">\n'
-+ '      <div class="chart-label">Fingerprint Radar — 番号は下の軸スコアと対応</div>\n'
++ '      <div class="chart-label">Fingerprint Radar — ' + t('番号は下の軸スコアと対応', 'numbers match axis scores below') + '</div>\n'
 + '      <div class="radar-wrap"><canvas id="radar"></canvas></div>\n'
 + '    </div>\n'
 + '    <div class="chart-card">\n'
@@ -424,7 +481,7 @@ const html = '<!DOCTYPE html>\n<html lang="ja">\n<head>\n'
 + (commentary.holistic_profile
   ? '<div class="ai-section">\n'
   + '  <div class="ai-portrait-col">\n'
-  + '    <img src="assets/images/char-axiom9-v2.png" alt="YOUR AI" class="ai-img">\n'
+  + '    <img src="' + (aiImgData || 'assets/images/char-axiom9-v2.png') + '" alt="YOUR AI" class="ai-img">\n'
   + '    <div class="ai-name">YOUR AI</div>\n'
   + '    <div class="ai-role">Thinking Partner</div>\n'
   + '  </div>\n'
@@ -433,7 +490,7 @@ const html = '<!DOCTYPE html>\n<html lang="ja">\n<head>\n'
   + '    <div class="speech-label">AI Feedback from Your AI</div>\n'
   + '    <div class="speech-text">' + commentary.holistic_profile + '</div>\n'
   + '  </div>\n'
-  + '  <div class="speech-note">あなたのことを最もよく知っているパートナーのAIからのフィードバックです。このコメントは、あなたが実際に会話したAIが、あなたの診断結果を受けて、会話全体の文脈をもとに生成したものです。</div>\n'
+  + '  <div class="speech-note">' + t('あなたのことを最もよく知っているパートナーのAIからのフィードバックです。このコメントは、あなたが実際に会話したAIが、あなたの診断結果を受けて、会話全体の文脈をもとに生成したものです。', 'Feedback from the AI that knows you best. This commentary was generated by the AI you actually conversed with, based on your analysis results and the full context of your conversation.') + '</div>\n'
   + '  </div>\n'
   + '</div>\n'
   : '')
@@ -450,10 +507,10 @@ const html = '<!DOCTYPE html>\n<html lang="ja">\n<head>\n'
 
 + '<div class="dev-notice">\n'
 + '  <div class="dev-notice-label">Under Development</div>\n'
-+ '  <div class="dev-notice-text">この分析は現時点での絶対評価です。他ユーザーとの相対比較はまだできません。データの集積が進むにつれて、パーセンタイル評価・精度向上を予定しています。</div>\n'
++ '  <div class="dev-notice-text">' + t('この分析は現時点での絶対評価です。他ユーザーとの相対比較はまだできません。データの集積が進むにつれて、パーセンタイル評価・精度向上を予定しています。', 'This analysis reflects absolute scores at this point in time. Relative comparison with other users is not yet available. As data accumulates, percentile scoring and improved accuracy are planned.') + '</div>\n'
 + '</div>\n'
 
-+ '<footer>Thought Analyzer — generated ' + new Date().toLocaleString('ja-JP') + '</footer>\n'
++ '<footer>Thought Analyzer — generated ' + new Date().toLocaleString(lang === 'en' ? 'en-US' : 'ja-JP') + '</footer>\n'
 + '</div>\n\n'
 + '<script>\n'
 + 'const colors = ' + JSON.stringify(pointColors) + ';\n'
@@ -591,7 +648,9 @@ const html = '<!DOCTYPE html>\n<html lang="ja">\n<head>\n'
 + '  var persona      = ' + JSON.stringify(personaLabel)  + ';\n'
 + '  var imgSrc       = ' + JSON.stringify(charImgData)   + ';\n'
 + '  var now = new Date();\n'
-+ '  var dateStr = now.getFullYear()+"年"+(now.getMonth()+1)+"月"+now.getDate()+"日";\n'
++ (lang === 'en'
+  ? '  var dateStr = (now.getMonth()+1)+"/"+now.getDate()+"/"+now.getFullYear();\n'
+  : '  var dateStr = now.getFullYear()+"年"+(now.getMonth()+1)+"月"+now.getDate()+"日";\n')
 + '\n'
 + '  function draw(charImg) {\n'
 + '    // ── 背景（ページと同じ）\n'
@@ -686,7 +745,7 @@ const html = '<!DOCTYPE html>\n<html lang="ja">\n<head>\n'
 + '    ctx.font = "400 13px Inter, sans-serif";\n'
 + '    ctx.fillStyle = "#9a98b8"; ctx.textAlign = "right";\n'
 + '    ctx.fillText("9-axis thinking pattern", cx0+cw-22, cy0+32);\n'
-+ '    ctx.fillText(dateStr+" 分析", cx0+cw-22, cy0+50);\n'
++ '    ctx.fillText(dateStr+" ' + t('分析', 'analysis') + '", cx0+cw-22, cy0+50);\n'
 + '\n'
 + '    // レーダーチャート（カード中央、ラベル込みで収まるサイズ）\n'
 + '    var rcx = cx0 + cw/2, rcy = cy0 + ch/2 + 10, rRadius = 140;\n'
