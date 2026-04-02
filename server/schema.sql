@@ -58,3 +58,6 @@ CREATE VIRTUAL TABLE IF NOT EXISTS concept_bridges_fts
 -- ALTER TABLE fingerprints ADD COLUMN country TEXT;
 -- ALTER TABLE fingerprints ADD COLUMN language TEXT;
 -- ALTER TABLE fingerprints ADD COLUMN character_type TEXT;
+
+-- v2.4 migration（既存DBに対して手動で実行）
+-- ALTER TABLE fingerprints ADD COLUMN analysis_type TEXT; -- 'thought_pattern' | 'coding_direction'

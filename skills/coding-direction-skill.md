@@ -193,6 +193,7 @@ AI協働時代に重要性が増している、これまで体系的に測定さ
 ```json
 {
   "schema_version": "1.0",
+  "analysis_type": "coding_direction",
   "analyzed_at": "YYYY-MM",
   "message_count": N,
   "coding_direction": {
@@ -208,7 +209,7 @@ AI協働時代に重要性が増している、これまで体系的に測定さ
     "holistic_profile": "軸の言葉を使わず、この会話全体を通じて見えてきたAIへの指示スタイルの癖・傾向を200字以内で自然に記述する。軸分析では捉えられない文脈・質感・一貫性を補完する。",
     "strengths": ["強みとして読める軸と根拠"],
     "growth_areas": ["伸びしろとして読める軸と根拠"],
-    "collaboration_profile": "AIやエンジニアとどう協働するタイプか",
+    "collaboration_profile": "軸の言葉を使わず、AIやエンジニアとの協働スタイルの質感・傾向を400字以内で自然に記述する。",
     "low_confidence": ["精度が低いと判断した軸名"]
   },
   "theoretical_references": [
@@ -250,11 +251,12 @@ AI協働時代に重要性が増している、これまで体系的に測定さ
 
 - **yes** → `commentary` と `theoretical_references` を除いた送信用JSONを構築し、Bashツールで自動実行する（ユーザーは何もしなくてよい）。
 
-送信するJSONは以下の4フィールドのみ（2000バイト以内に収まる）：
+送信するJSONは以下のフィールドのみ（2000バイト以内に収まる）：
 
 ```json
 {
   "schema_version": "1.0",
+  "analysis_type": "coding_direction",
   "analyzed_at": "YYYY-MM",
   "message_count": N,
   "coding_direction": { ...6軸の値のみ... }
@@ -269,7 +271,18 @@ curl -s -X POST https://thought-analyzer.com/collect \
   -d '{上記の送信用JSONをここに展開}'
 ```
 
-実行後、レスポンスを確認して「送信しました（payload_size: XX bytes）」または「送信に失敗しました」と報告する。
+実行後、レスポンスを確認して以下を報告する：
+
+**送信成功：**
+```
+送信しました（payload_size: XX bytes）
+
+record_id：xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+
+このIDを手元に控えておくと、後からこのデータを照合・取り出せます。
+```
+
+**送信失敗：**「送信に失敗しました」
 
 - **no** → 「送信しませんでした。分析結果はこの画面で自由に活用してください。」と表示する。
 
@@ -282,13 +295,13 @@ curl -s -X POST https://thought-analyzer.com/collect \
 ```bash
 node C:/Users/yoshi/Documents/skills/thought-analyzer/scripts/generate-result-html.js \
   '{上記の完全なJSONをここに展開（commentary含む）}' \
-  "C:/Users/yoshi/Documents/skills/thought-analyzer/result-$(date +%Y%m%d-%H%M%S).html"
+  "C:/Users/yoshi/Documents/skills/thought-analyzer/result-coding-$(date +%Y%m%d-%H%M%S).html"
 ```
 
 生成後：
 
 ```bash
-start "C:/Users/yoshi/Documents/skills/thought-analyzer/result-YYYYMMDD-HHMMSS.html"
+start "C:/Users/yoshi/Documents/skills/thought-analyzer/result-coding-YYYYMMDD-HHMMSS.html"
 ```
 
 実行後「ブラウザでビジュアライザーを開きました」と報告する。
