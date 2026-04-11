@@ -229,22 +229,42 @@ node C:/Users/yoshi/Documents/skills/thought-analyzer/scripts/generate-unified-h
 
 ### 統合送信（yes の場合）
 
-送信・cleanup を **1回のBash呼び出し**で完了する（curl を3回に分割しない）。
+**Step A：Writeツールで送信用JSONを3ファイルに書き出す（承認不要）**
+
+日本語文字列がシェル変数に混入するとJSON破損が起きるため、必ずWriteツールを使うこと。
+
+- `C:/Users/yoshi/AppData/Local/Temp/ta-thought-YYYYMMDD-HHMMSS.json` → JSON-A送信用（thought_pattern）
+- `C:/Users/yoshi/AppData/Local/Temp/ta-coding-YYYYMMDD-HHMMSS.json` → JSON-B送信用（coding_direction）
+- `C:/Users/yoshi/AppData/Local/Temp/ta-pair-YYYYMMDD-HHMMSS.json`   → JSON-C送信用（pair_analysis）
+
+各ファイルの内容（commentary・theoretical_references・influence_mapは除く）：
+
+```json
+// ta-thought-*.json
+{ "schema_version":"3.0","analysis_type":"thought_pattern","analyzed_at":"YYYY-MM","message_count":N,"fingerprint":{...9軸...},"user_token":"TOKEN" }
+
+// ta-coding-*.json
+{ "schema_version":"1.0","analysis_type":"coding_direction","analyzed_at":"YYYY-MM","message_count":N,"coding_direction":{...6軸...},"user_token":"TOKEN" }
+
+// ta-pair-*.json
+{ "schema_version":"3.0","analysis_type":"pair_analysis","analyzed_at":"YYYY-MM","pair_count":N,"reaction_patterns":{...},"user_token":"TOKEN" }
+```
+
+**Step B：1回のBash呼び出しで送信・報告・クリーンアップ**
 
 ```bash
-# 送信用JSONを変数に展開してから1ブロックで実行
-THOUGHT_JSON='{ "schema_version":"3.0","analysis_type":"thought_pattern","analyzed_at":"YYYY-MM","message_count":N,"fingerprint":{...},"user_token":"TOKEN" }'
-CODING_JSON='{ "schema_version":"1.0","analysis_type":"coding_direction","analyzed_at":"YYYY-MM","message_count":N,"coding_direction":{...},"user_token":"TOKEN" }'
-PAIR_JSON='{ "schema_version":"1.0","analysis_type":"pair_analysis","analyzed_at":"YYYY-MM","pair_count":N,"reaction_patterns":{...},"user_token":"TOKEN" }'
-
-T=$(curl -s -X POST https://thought-analyzer.com/collect -H "Content-Type: application/json" -d "$THOUGHT_JSON")
-C=$(curl -s -X POST https://thought-analyzer.com/collect -H "Content-Type: application/json" -d "$CODING_JSON")
-P=$(curl -s -X POST https://thought-analyzer.com/collect -H "Content-Type: application/json" -d "$PAIR_JSON")
+TS="YYYYMMDD-HHMMSS"
+T=$(curl -s -X POST https://thought-analyzer.com/collect -H "Content-Type: application/json" -d @"C:/Users/yoshi/AppData/Local/Temp/ta-thought-${TS}.json")
+C=$(curl -s -X POST https://thought-analyzer.com/collect -H "Content-Type: application/json" -d @"C:/Users/yoshi/AppData/Local/Temp/ta-coding-${TS}.json")
+P=$(curl -s -X POST https://thought-analyzer.com/collect -H "Content-Type: application/json" -d @"C:/Users/yoshi/AppData/Local/Temp/ta-pair-${TS}.json")
 
 echo "thought:  $T"
 echo "coding:   $C"
 echo "pair:     $P"
 
+rm -f "C:/Users/yoshi/AppData/Local/Temp/ta-thought-${TS}.json" \
+      "C:/Users/yoshi/AppData/Local/Temp/ta-coding-${TS}.json" \
+      "C:/Users/yoshi/AppData/Local/Temp/ta-pair-${TS}.json"
 rm -f C:/Users/yoshi/Documents/skills/thought-analyzer/logs/ta-log_*.jsonl
 ```
 
