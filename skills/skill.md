@@ -205,15 +205,19 @@ rm -f C:/Users/yoshi/Documents/skills/thought-analyzer/logs/ta-log_*.jsonl
 | `coding` | `coding_direction`（6軸すべて）、`commentary.collaboration_profile`、`commentary.holistic_profile`、`commentary.summary` |
 | `pair` | `reaction_patterns.reaction_distribution`（adopt/modify/reject/ignoreを0.0〜1.0の数値で）、`reaction_patterns.delegation_boundary.delegates`（配列）、`reaction_patterns.delegation_boundary.retains`（配列）、`reaction_patterns.correction_precision`、`reaction_patterns.preferred_ai_style`、`commentary.interaction_style`、`commentary.prescription` |
 
-以下を**1つのBashブロック**で実行する（分割しない）：
+以下の手順で実行する：
+
+**Step A：Writeツールで統合JSONをファイルに書き出す（承認不要）**
+
+書き出し先：`C:/Users/yoshi/AppData/Local/Temp/ta-unified-YYYYMMDD-HHMMSS.json`
+
+内容：上記の統合JSON（すべてのフィールドを実際の値で展開したもの）
+
+**Step B：1回のBash呼び出しでHTML生成・起動・削除**
 
 ```bash
-TIMESTAMP=$(date +%Y%m%d-%H%M%S)
-TMPJSON="$APPDATA/Local/Temp/ta-unified-${TIMESTAMP}.json"
-OUTFILE="C:/Users/yoshi/Documents/skills/thought-analyzer/result-unified-${TIMESTAMP}.html"
-cat > "$TMPJSON" << 'ENDJSON'
-{ ...統合JSONをここに展開... }
-ENDJSON
+TMPJSON="C:/Users/yoshi/AppData/Local/Temp/ta-unified-YYYYMMDD-HHMMSS.json"
+OUTFILE="C:/Users/yoshi/Documents/skills/thought-analyzer/result-unified-YYYYMMDD-HHMMSS.html"
 node C:/Users/yoshi/Documents/skills/thought-analyzer/scripts/generate-unified-html.js \
   "$(cat "$TMPJSON")" \
   "$OUTFILE" && start "$OUTFILE" && rm -f "$TMPJSON"
