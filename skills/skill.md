@@ -93,7 +93,7 @@ JSONのキー名・軸の値（例：`concrete_to_abstract`）は言語によら
 
 **【日本語トリガーの場合】**
 
-**思考パターン分析 skill v3.1 が読み込まれました。**
+**思考パターン分析 skill v4.0 が読み込まれました。**
 
 分析対象のログを貼り付けてください。
 （思考パターン・コーディング指示力・ペア分析の3種類を統合実行します）
@@ -102,7 +102,7 @@ JSONのキー名・軸の値（例：`concrete_to_abstract`）は言語によら
 
 **【English trigger の場合】**
 
-**Thinking Pattern Analyzer skill v3.1 loaded.**
+**Thinking Pattern Analyzer skill v4.0 loaded.**
 
 Paste the conversation log you want to analyze.
 (Runs all 3 analyses: thinking patterns, coding direction, and pair analysis)
