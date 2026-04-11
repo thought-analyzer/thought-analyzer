@@ -4,6 +4,61 @@
 
 ---
 
+## 2026-04-11
+
+**skill v4.0（GitHub公開対応版）**
+
+- **Phase 1：Bash承認削減**
+  - 統合送信（curl×3 + JSONL削除）を1 Bashブロックに統合
+  - HTML生成 + ブラウザ起動を1 Bashブロックに統合
+  - 承認回数を最大8回 → 最大3回に削減
+- **Phase 2：開発者向け整備**
+  - skill.md に「クイックリファレンス」セクションを追加（ファイル構成テーブル・Bash呼び出し数サマリー・JSONサマリー）
+  - 実行フローをMermaid記法に変換（GitHub上でグラフ表示対応）
+  - フロントマターの description / trigger をマルチライン形式で整理
+  - 各サブスキルファイル冒頭に役割注記を追加
+- **Phase 3：トークン削減**
+  - `thought-pattern-skill.md`：Step 4「送信の案内」本文を削除（skill.mdに移管済み）→ 約85行削減
+  - `coding-direction-skill.md`：起動メッセージ + 送信の案内 + 結果の可視化を削除 → 約90行削減
+  - `pair-analysis-skill.md`：Step 6「可視化」詳細を削除 → 約7行削減
+  - 合計 約180行削減。各ファイルは送信JSONスキーマ定義のみ残す
+
+---
+
+## 2026-04-09
+
+**HTMLビジュアライザー v3.1（generate-unified-html.js）**
+- ヒーローバー追加：BRIDGER × STRATEGIST × EXPLORATORY を大型表示（28px・Space Grotesk）
+  - タイプカラーのグラデーション背景＋ドットグリッドパターン、文字glow効果
+- パネルアイコン：3種のSVGカスタムイラストを追加
+  - 思考パターン：顎に手を当てて考える人のシルエット（オレンジglow）
+  - 指示力：斜め下を指差す人のシルエット（グリーンglow）
+  - ペア分析：向き合う二人と対話の弧線（ブルーglow）
+- 9軸タグにミニスペクトルバー追加（normalize済みスコアをバーで表示）
+- コメント欄を折りたたみ式に（72px表示、「show more ▾」で展開）
+- パネル・インサイトカードのホバーエフェクト追加
+  - translateY(-3px) + カラーglow（内側リング + 外側shadow）
+- EN/JAバイリンガルトグル実装（ヘッダー右上のEN/JAピル）
+  - ENモード：英語ラベル＋日本語tooltipを表示
+  - JAモード：日本語ラベル＋英語tooltipに切り替え
+  - 軸タグ・コーディングバーに data-en / data-ja 属性を追加
+- JStooltiをbody直下のグローバルfloating方式に変更
+  - overflow:hiddenによるクリッピング問題を解消
+  - viewport端での自動反転（左右・上下）
+  - デザイン刷新（backdrop-blur、border、box-shadow）
+- フォント刷新：Inter（本文）＋ Space Grotesk（ヒーロー・軸値・ペルソナ名）
+- ヘッダーからtype-row（小バッジ）を削除してスリム化
+
+**Medium記事**
+- #08「Most People Who Use AI Every Day Have Never Seen How They Use It」投稿
+  - 出典：OpenAI研究（1.5M会話分析）
+  - 個人体験：夫のフレーミングでAI出力が一変したエピソードを追加
+
+**Zenn**
+- 実践編（thought-analyzer-vol2）公開（7章構成）
+
+---
+
 ## 2026-03-29
 
 **サーバー v2.3（デプロイ済み）**
