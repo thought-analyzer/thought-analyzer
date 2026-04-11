@@ -196,9 +196,14 @@ rm -f C:/Users/yoshi/Documents/skills/thought-analyzer/logs/ta-log_*.jsonl
 ```
 
 **⚠️ 展開時の注意（省略禁止）：**
-- `pair.reaction_patterns.reaction_distribution` の adopt / modify / reject / ignore を必ず数値で展開すること（`"adopt": 0.92` など）
-- `pair.reaction_patterns.delegation_boundary.delegates` / `retains` のリストを展開すること
-- プレースホルダー（`...`）を残さないこと。すべてのフィールドを実際の値で埋めること
+
+以下のフィールドはHTMLビジュアライザーの表示に直結する。`...` や省略は絶対に残さないこと。
+
+| JSON | 必須展開フィールド |
+|---|---|
+| `thought` | `fingerprint`（9軸すべて）、`commentary.holistic_profile`、`commentary.strengths`（配列）、`commentary.blind_spots`（配列）、`commentary.summary` |
+| `coding` | `coding_direction`（6軸すべて）、`commentary.collaboration_profile`、`commentary.holistic_profile`、`commentary.summary` |
+| `pair` | `reaction_patterns.reaction_distribution`（adopt/modify/reject/ignoreを0.0〜1.0の数値で）、`reaction_patterns.delegation_boundary.delegates`（配列）、`reaction_patterns.delegation_boundary.retains`（配列）、`reaction_patterns.correction_precision`、`reaction_patterns.preferred_ai_style`、`commentary.interaction_style`、`commentary.prescription` |
 
 以下を**1つのBashブロック**で実行する（分割しない）：
 
