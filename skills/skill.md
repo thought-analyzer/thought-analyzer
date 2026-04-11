@@ -195,6 +195,11 @@ rm -f C:/Users/yoshi/Documents/skills/thought-analyzer/logs/ta-log_*.jsonl
 }
 ```
 
+**⚠️ 展開時の注意（省略禁止）：**
+- `pair.reaction_patterns.reaction_distribution` の adopt / modify / reject / ignore を必ず数値で展開すること（`"adopt": 0.92` など）
+- `pair.reaction_patterns.delegation_boundary.delegates` / `retains` のリストを展開すること
+- プレースホルダー（`...`）を残さないこと。すべてのフィールドを実際の値で埋めること
+
 以下を**1つのBashブロック**で実行する（分割しない）：
 
 ```bash
