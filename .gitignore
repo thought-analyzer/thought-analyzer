@@ -4,3 +4,8 @@ node_modules/
 .DS_Store
 *.log
 result-*.html
+skills/thought-analyzer/logs/
+
+# ローカルのみ（公開しない）
+data/analytics-log.md
+scripts/header-design-philosophy.md
